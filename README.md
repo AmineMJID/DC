@@ -52,6 +52,11 @@ via localStorage, en secours).
    puis glissez la carte **Rack** sur le board. Vous pouvez placer plusieurs
    racks, les déplacer en tirant l'en-tête, **changer leur taille** via le menu
    dans l'en-tête, et les **renommer** en double-cliquant sur le nom.
+   L'en-tête affiche des **métriques de capacité** mises à jour en direct :
+   espace occupé (`8/12U`, en rouge si plein), **puissance totale** et
+   **poids total** des devices (si renseignés). **Double-cliquez sur les
+   badges puissance/poids** pour définir un **budget électrique (W)** et une
+   **charge maximale (kg)** : le badge passe en rouge en cas de dépassement.
    Les racks sont dessinés comme de vrais racks 19" : montants perforés
    (trous de cage nuts), règle des U et faceplates métalliques.
 3. **Recherche globale** : le champ de la barre du haut cherche dans **tous les
@@ -62,10 +67,32 @@ via localStorage, en secours).
    d'annuler/rétablir toutes les actions (placement, suppression, « Vider »,
    création de device/workspace…).
 5. **Export du plan** : le bouton **Exporter** de la barre du haut ouvre un
-   menu permettant d'enregistrer le plan du workspace courant en **image PNG**
-   ou en **document PDF** (rendu haute définition des racks, devices et ports).
+   menu permettant d'enregistrer le plan du workspace courant :
+   - **Image PNG** / **Plan PDF (1 page)** — rendu haute définition des racks,
+     devices et ports ;
+   - **Document LLD (PDF)** — le dossier complet, multi-pages : page de garde
+     (client, auteur, version, historique des révisions, statistiques), synthèse
+     des racks (capacités et budgets), inventaire, plan d'adressage & ports,
+     tableau de câblage, registre VLANs & subnets, topologie logique et
+     élévations des racks en images. Pieds de page numérotés (date, page X/Y).
+     Généré sans dépendance (PDF natif).
+   - **Classeur Excel (.xlsx)** — un vrai fichier Excel (écrit sans dépendance)
+     avec 4 feuilles : *Inventaire*, *Câblage*, *Ports* et *Racks* (en-têtes
+     stylés, largeurs automatiques, première ligne figée) ;
+   - **Inventaire (CSV)** — tableau de tous les devices posés (rack, étage,
+     taille, marque, modèle, référence, n° série, IP mgmt, VLAN, puissance,
+     poids, nombre de ports) ;
+   - **Câblage (CSV)** — tableau des cordons (ID, couleur, extrémités A/B :
+     rack, device, port, étiquette) ;
+   - **Ports & étiquettes (CSV)** — tous les ports avec rack, étage, device,
+     nom du port, étiquette, IP, VLAN et câble connecté.
+   Les CSV sont au format Excel français (séparateur `;`, UTF-8 BOM).
 6. **Créer un device** : cliquez sur **＋ Créer un device**, donnez-lui un nom,
    une taille (1U, 2U…) et importez la **photo 2D de la face avant**.
+   Une **fiche d'inventaire** optionnelle complète le modèle : marque, modèle,
+   référence constructeur, n° série, IP management, VLAN(s), puissance (W) et
+   poids (kg). Ces champs sont recopiés sur chaque exemplaire posé dans un rack
+   (et restent modifiables individuellement depuis la fiche de survol).
    - **Détection automatique des ports** : dès l'import de la photo, l'application
      analyse l'image et repère les connecteurs (RJ45, SFP…) — ports noirs sur
      panneau clair, clairs sur panneau sombre, etc. Les ports trouvés sont
@@ -77,13 +104,20 @@ via localStorage, en secours).
    automatiquement à l'étage (numéro d'U) où vous le déposez. La zone visée est surlignée
    en vert (libre) ou rouge (occupé). Vous pouvez aussi déplacer un device déjà placé,
    ou le retirer avec le bouton ✕ au survol.
+   - **Fiche du device au survol** : laissez le curseur un instant sur un device posé
+     (hors modes Étiquetage/Câblage) — une fiche s'affiche avec sa photo, son nom, sa
+     taille, son étage de départ et son nombre de ports. **Double-cliquez sur une
+     valeur pour la modifier** : le nom, la taille en U (replacé automatiquement au
+     plus près s'il faut de la place) ou l'étage de départ (avec contrôle de collision).
+     Entrée valide, Échap annule.
 8. **Port et étiquetage** : le bouton **🔌 Port et étiquetage ▾** propose deux modes :
    **➕ Créer des ports** (cliquez sur la face avant d'un device pour y poser un port,
    icône RJ45) et **✏️ Modifier les ports** (cliquez sur un port existant pour changer
-   son **nom** — ex. `Gi0/1` —, son **étiquette** — ex. `CAB-SRV-01` — ou sa **taille**
+   son **nom** — ex. `Gi0/1` —, son **étiquette** — ex. `CAB-SRV-01` —, son **IP**
+   et son **VLAN** (plan d'adressage), ou sa **taille**
    via un curseur en pourcentage de 50 % à 250 %, avec un aperçu en transparence ;
    glissez un port pour le repositionner). Un port peut aussi être supprimé depuis sa
-   fenêtre d'édition.
+   fenêtre d'édition. Au survol, l'infobulle affiche nom, étiquette, IP et VLAN.
 9. Au **survol d'un port**, une infobulle affiche son nom et son étiquette.
 10. **Mode Câblage** : l'interrupteur **Câblage** de la barre du haut active le
     mode. Cliquez alors **un port, puis un autre port** pour les relier par un
@@ -93,6 +127,22 @@ via localStorage, en secours).
     retrouver (centrage) ou de les supprimer. Les câbles sont inclus dans
     l'export PNG/PDF. Désactiver l'interrupteur masque les câbles et interdit
     leur édition.
+11. **Vue Topologie (diagramme logique)** : le sélecteur **📐 Élévations /
+    🕸️ Topologie** de la barre du haut bascule le board en diagramme réseau.
+    **⚡ Générer depuis les racks** crée un noeud par device posé (nom, marque/
+    modèle, rack · étage, IP mgmt) ; **🔌 Importer les câbles** crée un lien par
+    câble physique ; **➕ Nouveau lien** relie deux noeuds cliqués l'un après
+    l'autre. Un lien (nom, débit, VLAN, style, couleur) se modifie en cliquant
+    dessus ; les noeuds se déplacent à la souris ; **double-clic sur un noeud**
+    revient en élévations, centré sur le device. La topologie est sauvegardée
+    dans le workspace et se recadre automatiquement (⌂).
+12. **Infos du dossier LLD** : le bouton **📘** de la barre du haut ouvre la
+    fiche du dossier : **client**, **auteur**, **version**, **historique des
+    révisions** (tableau ajouté à la page de garde du PDF) et **registre
+    VLANs & subnets** (ID, nom, subnet, passerelle, usage). Le bouton
+    **🔎 Détecter depuis les ports** ajoute automatiquement les VLANs
+    utilisés sur les ports ou les liens logiques mais absents du registre.
+    Ces informations alimentent les sections correspondantes du document LLD.
 
 Tout est sauvegardé automatiquement : sur le **serveur (fichier `data/state.json`)**
 quand l'application est lancée avec `server.py`, et sinon dans le navigateur
