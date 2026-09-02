@@ -90,6 +90,11 @@ function normalizeState(s) {
       s.activeWorkspaceId = null;
     }
   }
+  // Ports pré-détectés sur les modèles de device (détection automatique)
+  s.devices.forEach(d => {
+    d.ports = Array.isArray(d.ports) ? d.ports : [];
+    d.ports.forEach(p => { if (typeof p.size !== 'number') p.size = 1; });
+  });
   // Normalisation rétro-compatible + date de modification
   s.workspaces.forEach(w => {
     w.racks = (Array.isArray(w.racks) ? w.racks : []).map(normalizeRack);
@@ -769,7 +774,10 @@ function renderRack(rack) {
           sizeU: tpl.sizeU,
           photo: tpl.photo,
           slot,
-          ports: []
+          ports: (tpl.ports || []).map(p => ({
+            id: uid(), xPct: p.xPct, yPct: p.yPct,
+            name: p.name, label: p.label || '', size: p.size || 1
+          }))
         });
         changed = true;
       }
@@ -1232,17 +1240,308 @@ board.addEventListener('pointerdown', e => {
 });
 
 /* ============================================================
+   DÉTECTION AUTOMATIQUE DE PORTS SUR LA PHOTO DE FACE AVANT
+   ------------------------------------------------------------
+   Analyse l'image (aucune librairie externe) :
+     1. Masques de contraste : localement plus sombre ou plus
+        clair que le voisinage (image intégrale), + seuils
+        globaux en secours — gère ports noirs sur panneau
+        blanc, blancs sur panneau sombre, sombres sur sombre…
+     2. Érosion binaire : sépare les ports collés entre eux.
+     3. Composantes connexes : un blob = un port candidat.
+     4. Filtres géométriques : taille, ratio, remplissage.
+     5. Rangées horizontales + chaînes régulières : élimine
+        le bruit (aérations, logos, texte).
+   Renvoie [{ cx, cy, pw, ph }] en pixels image, triées en
+   ordre de lecture (haut→bas, gauche→droite).
+   ============================================================ */
+
+const PortDetect = (() => {
+
+  function median(arr) {
+    const s = [...arr].sort((a, b) => a - b);
+    return s.length ? s[s.length >> 1] : 0;
+  }
+
+  function grayscale(data, W, H) {
+    const g = new Float32Array(W * H);
+    for (let i = 0, p = 0; i < g.length; i++, p += 4)
+      g[i] = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+    return g;
+  }
+
+  function percentile(g, pct) {
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < g.length; i++) hist[g[i] | 0]++;
+    let acc = 0;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= g.length * pct) return v; }
+    return 255;
+  }
+
+  // Image intégrale (moyenne locale en O(1) par pixel)
+  function integral(g, W, H) {
+    const I = new Float64Array((W + 1) * (H + 1));
+    for (let y = 0; y < H; y++) {
+      let rs = 0;
+      for (let x = 0; x < W; x++) {
+        rs += g[y * W + x];
+        I[(y + 1) * (W + 1) + (x + 1)] = I[y * (W + 1) + (x + 1)] + rs;
+      }
+    }
+    return I;
+  }
+  function localMean(I, W, H, x, y, r) {
+    const x0 = Math.max(0, x - r), y0 = Math.max(0, y - r);
+    const x1 = Math.min(W, x + r + 1), y1 = Math.min(H, y + r + 1);
+    return (I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] -
+            I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+  }
+
+  // Érosion binaire séparable (carré (2r+1)²)
+  function erode(mask, W, H, r) {
+    if (r <= 0) return mask;
+    const tmp = new Uint8Array(W * H), out = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      const row = y * W;
+      for (let x = 0; x < W; x++) {
+        let on = 1;
+        for (let k = -r; k <= r; k++) {
+          const xx = x + k;
+          if (xx < 0 || xx >= W || !mask[row + xx]) { on = 0; break; }
+        }
+        tmp[row + x] = on;
+      }
+    }
+    for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) {
+        let on = 1;
+        for (let k = -r; k <= r; k++) {
+          const yy = y + k;
+          if (yy < 0 || yy >= H || !tmp[yy * W + x]) { on = 0; break; }
+        }
+        out[y * W + x] = on;
+      }
+    }
+    return out;
+  }
+
+  // Composantes connexes 4-connexité (BFS) — bbox + aire
+  function blobs(mask, W, H) {
+    const labels = new Int32Array(W * H).fill(-1);
+    const out = [], stack = [];
+    for (let start = 0; start < mask.length; start++) {
+      if (!mask[start] || labels[start] !== -1) continue;
+      const id = out.length;
+      stack.length = 0; stack.push(start); labels[start] = id;
+      let minX = W, maxX = 0, minY = H, maxY = 0, area = 0;
+      while (stack.length) {
+        const idx = stack.pop();
+        const x = idx % W, y = (idx / W) | 0;
+        area++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        if (x > 0     && mask[idx - 1] && labels[idx - 1] === -1) { labels[idx - 1] = id; stack.push(idx - 1); }
+        if (x < W - 1 && mask[idx + 1] && labels[idx + 1] === -1) { labels[idx + 1] = id; stack.push(idx + 1); }
+        if (y > 0     && mask[idx - W] && labels[idx - W] === -1) { labels[idx - W] = id; stack.push(idx - W); }
+        if (y < H - 1 && mask[idx + W] && labels[idx + W] === -1) { labels[idx + W] = id; stack.push(idx + W); }
+      }
+      out.push({ minX, minY, maxX, maxY, area,
+                 w: maxX - minX + 1, h: maxY - minY + 1,
+                 cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 });
+    }
+    return out;
+  }
+
+  function cvGaps(items) {
+    const gaps = [];
+    for (let i = 1; i < items.length; i++) gaps.push(items[i].cx - items[i - 1].cx);
+    const m = median(gaps.filter(x => x > 2));
+    if (!m) return 9;
+    return Math.sqrt(gaps.reduce((s, x) => s + (x - m) ** 2, 0) / gaps.length) / m;
+  }
+
+  // Rangées horizontales par chaînage de membre + garde anti-diagonale
+  function buildRows(cands) {
+    const sorted = [...cands].sort((a, b) => a.cy - b.cy);
+    const rows = [];
+    for (const b of sorted) {
+      let best = null;
+      for (const r of rows) {
+        const tol = Math.max(r.phMed * 0.75, 7);
+        let nd = 1e9;
+        for (const m of r.items) { const d = Math.abs(m.cy - b.cy); if (d < nd) nd = d; }
+        if (nd < tol && (!best || nd < best.nd)) best = { r, nd };
+      }
+      if (best) {
+        best.r.items.push(b);
+        best.r.phMed = median(best.r.items.map(i => i.ph));
+        best.r.cy = best.r.items.reduce((s, i) => s + i.cy, 0) / best.r.items.length;
+      } else {
+        rows.push({ cy: b.cy, items: [b], phMed: b.ph });
+      }
+    }
+    rows.forEach(r => r.items.sort((a, b) => a.cx - b.cx));
+    return rows.filter(r => {
+      const ys = r.items.map(i => i.cy);
+      return Math.max(...ys) - Math.min(...ys) <= Math.max(r.phMed * 1.3, 8);
+    }).sort((a, b) => a.cy - b.cy);
+  }
+
+  // Chaînes régulièrement espacées (les îlots isolés sont du bruit)
+  function keepChains(items) {
+    if (items.length <= 4) return items;
+    const gaps = [];
+    for (let i = 1; i < items.length; i++) gaps.push(items[i].cx - items[i - 1].cx);
+    const pitch = median(gaps.filter(x => x > 2));
+    const cs = [[items[0]]];
+    for (let i = 1; i < items.length; i++) {
+      const gp = items[i].cx - items[i - 1].cx;
+      if (gp <= Math.max(pitch * 1.9, pitch + 6)) cs[cs.length - 1].push(items[i]);
+      else cs.push([items[i]]);
+    }
+    const kept = cs.filter(c => c.length >= 2);
+    return kept.length ? kept.flat() : cs.sort((a, b) => b.length - a.length)[0];
+  }
+
+  function sizeOutliers(items) {
+    if (items.length < 5) return items;
+    const pwM = median(items.map(i => i.pw)), phM = median(items.map(i => i.ph));
+    return items.filter(i => Math.abs(i.pw - pwM) <= pwM * 0.45 && Math.abs(i.ph - phM) <= phM * 0.45);
+  }
+
+  // ---- Détection principale : renvoie les rangées retenues ----
+  function detect(imageData) {
+    const W = imageData.width, H = imageData.height;
+    if (W < 220 || H < 60) return null;          // trop petit : pas fiable
+    const data = imageData.data;
+    const g = grayscale(data, W, H);
+    const scale = W / 600;
+    const I = integral(g, W, H);
+    const minPW = Math.max(5, Math.round(W * 0.022));
+    const minPH = Math.max(5, Math.round(W * 0.020));
+    const localR = [Math.round(Math.max(8, W / 40)), Math.round(Math.max(8, W / 16))];
+
+    const variants = [];
+    for (const type of ['ldark', 'lbright', 'gdark', 'gbright']) {
+      for (let vi = 0; vi < 2; vi++) {
+        let mask = new Uint8Array(W * H);
+        if (type === 'ldark' || type === 'lbright') {
+          const r = localR[vi], delta = 12;
+          for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const lm = localMean(I, W, H, x, y, r), v = g[y * W + x];
+            mask[y * W + x] = type === 'ldark' ? (v < lm - delta ? 1 : 0) : (v > lm + delta ? 1 : 0);
+          }
+        } else {
+          const pct = type === 'gdark' ? (vi === 0 ? 0.18 : 0.32) : (vi === 0 ? 0.82 : 0.68);
+          const thr = percentile(g, pct);
+          for (let i = 0; i < g.length; i++)
+            mask[i] = type === 'gdark' ? (g[i] <= thr ? 1 : 0) : (g[i] >= thr ? 1 : 0);
+        }
+        for (const r of [Math.max(1, Math.round(scale * 2)), Math.max(1, Math.round(scale * 3))]) {
+          const er = erode(mask, W, H, r);
+          const cands = [];
+          for (const b of blobs(er, W, H)) {
+            const pw = b.w + 2 * r, ph = b.h + 2 * r;
+            if (pw < minPW || pw > W * 0.30 || ph < minPH || ph > H * 0.55) continue;
+            const ar = pw / ph;
+            if (ar < 0.5 || ar > 2.8) continue;
+            if (b.area / (b.w * b.h) < 0.45) continue;
+            cands.push({ ...b, pw, ph });
+          }
+          variants.push({ cands });
+        }
+      }
+    }
+
+    let best = null;
+    for (const v of variants) {
+      if (!v.cands.length) continue;
+      let rows = buildRows(v.cands)
+        .map(r => { r.items = sizeOutliers(keepChains(r.items)); return r; })
+        .filter(r => r.items.length);
+
+      let sel = rows.filter(r => r.items.length >= 3 && cvGaps(r.items) <= 0.40);
+      let n = sel.reduce((s, r) => s + r.items.length, 0);
+      if (n < 12) {
+        for (const r2 of rows.filter(r => r.items.length === 2 && !sel.includes(r2))) sel.push(r2);
+        n = sel.reduce((s, r) => s + r.items.length, 0);
+      }
+      if (!n) continue;
+
+      // Cohérence de taille entre rangées (garde-fou anti-bruit)
+      if (n >= 12 && sel.length > 1) {
+        const all = sel.flatMap(r => r.items);
+        const pwG = median(all.map(i => i.pw)), phG = median(all.map(i => i.ph));
+        sel = sel.filter(r => {
+          const pwM = median(r.items.map(i => i.pw)), phM = median(r.items.map(i => i.ph));
+          return Math.abs(pwM - pwG) <= pwG * 0.35 && Math.abs(phM - phG) <= phG * 0.35;
+        });
+        n = sel.reduce((s, r) => s + r.items.length, 0);
+        if (!n) continue;
+      }
+      if (n > 96) continue;                       // garde-fou : photo type grille d'aération
+
+      let reg = 0, cnt = 0;
+      for (const r of sel) if (r.items.length >= 3) { reg += Math.max(0, 1 - cvGaps(r.items)); cnt++; }
+      reg = cnt ? reg / cnt : 0.5;
+      if (n > 6 && reg < 0.45) continue;          // trop chaotique : on ne devine pas
+
+      const score = n * (0.5 + reg / 2);
+      if (!best || score > best.score) best = { rows: sel, n, reg, score };
+    }
+    return best;
+  }
+
+  // ---- API : positions en % + taille suggérée ----
+  function portsFromImageData(imageData) {
+    const best = detect(imageData);
+    if (!best || best.n < 1) return [];
+    const W = imageData.width, H = imageData.height;
+    const rows = best.rows;                       // triées haut→bas, items gauche→droite
+    const maxCols = Math.max(...rows.map(r => r.items.length));
+    // taille des carrés « port » selon la densité (pour tenir dans la baie)
+    const size = maxCols <= 4 ? 1 : maxCols <= 8 ? 0.8 : maxCols <= 12 ? 0.65
+               : maxCols <= 16 ? 0.5 : maxCols <= 26 ? 0.4 : 0.3;
+    const ports = [];
+    for (const r of rows) for (const it of r.items)
+      ports.push({ xPct: (it.cx / W) * 100, yPct: (it.cy / H) * 100, size });
+    return ports;
+  }
+
+  return { portsFromImageData };
+})();
+
+// Charge une dataURL, renvoie l'ImageData correspondante
+function imageDataFromUrl(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      resolve(c.getContext('2d').getImageData(0, 0, c.width, c.height));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+/* ============================================================
    CRÉATION D'UN DEVICE (modale)
    ============================================================ */
 
 let modalPhoto = null;
+
+let modalPorts = [];          // ports détectés sur la photo [{xPct,yPct,size}]
 
 $('#btn-new-device').addEventListener('click', () => {
   $('#d-name').value = '';
   $('#d-size').value = '1';
   $('#d-photo').value = '';
   $('#d-preview').classList.add('hidden');
+  $('#d-detect').classList.add('hidden');
   modalPhoto = null;
+  modalPorts = [];
   $('#device-modal').classList.remove('hidden');
   $('#d-name').focus();
 });
@@ -1257,16 +1556,65 @@ $('#d-photo').addEventListener('change', async e => {
   if (!file) return;
   modalPhoto = await readAndDownscale(file);
   const prev = $('#d-preview');
-  prev.querySelector('img').src = modalPhoto;
+  const img = prev.querySelector('img');
+  img.src = modalPhoto;
+  // attendre le chargement pour caler le wrapper sur le ratio réel de la photo
+  await new Promise(res => {
+    if (img.complete && img.naturalWidth) return res();
+    img.addEventListener('load', res, { once: true });
+    img.addEventListener('error', res, { once: true });
+  });
+  const inner = $('#d-preview-inner');
+  if (img.naturalWidth) {
+    const maxW = prev.clientWidth || 300, maxH = 150;
+    const ar = img.naturalWidth / img.naturalHeight;
+    const h = Math.min(maxH, maxW / ar);
+    inner.style.width = Math.round(h * ar) + 'px';
+    inner.style.height = Math.round(h) + 'px';
+  }
   prev.classList.remove('hidden');
+
+  // --- Détection automatique des ports sur la photo ---
+  modalPorts = [];
+  const detectBox = $('#d-detect');
+  detectBox.classList.add('hidden');
+  const overlay = $('#d-overlay');
+  overlay.innerHTML = '';
+  if (modalPhoto) {
+    const id = await imageDataFromUrl(modalPhoto);
+    let ports = [];
+    try { ports = PortDetect.portsFromImageData(id); } catch (err) { console.warn('Détection de ports échouée', err); }
+    modalPorts = ports;
+
+    // carrés d'aperçu positionnés en % sur la photo
+    for (const p of ports) {
+      const sq = document.createElement('div');
+      sq.className = 'd-dq';
+      sq.style.left = p.xPct + '%';
+      sq.style.top  = p.yPct + '%';
+      overlay.appendChild(sq);
+    }
+    $('#d-detect-count').textContent = ports.length
+      ? `${ports.length} port${ports.length > 1 ? 's' : ''} détecté${ports.length > 1 ? 's' : ''} sur la photo`
+      : 'Aucun port détecté — vous pourrez en placer manuellement (mode Étiquetage)';
+    $('#d-ports-use').checked = ports.length > 0;
+    $('#d-ports-use').disabled = ports.length === 0;
+    detectBox.classList.remove('hidden');
+  }
 });
 
 $('#d-save').addEventListener('click', () => {
   const name = $('#d-name').value.trim();
   if (!name) { $('#d-name').focus(); return; }
   const sizeU = parseInt($('#d-size').value, 10) || 1;
+  const usePorts = $('#d-ports-use').checked && modalPorts.length > 0;
   pushHistory();
-  state.devices.push({ id: uid(), name, sizeU, photo: modalPhoto });
+  state.devices.push({
+    id: uid(), name, sizeU, photo: modalPhoto,
+    ports: usePorts ? modalPorts.map((p, i) => ({
+      id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
+    })) : []
+  });
   saveState();
   renderPalette();
   $('#device-modal').classList.add('hidden');
