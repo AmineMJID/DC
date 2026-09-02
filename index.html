@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>DC Rack Planner — Plan de racks data center</title>
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
   <header class="topbar">
@@ -225,7 +225,18 @@
       <label>Photo de la face avant (2D)
         <input id="d-photo" type="file" accept="image/*">
       </label>
-      <div id="d-preview" class="d-preview hidden"><img alt="Aperçu"></div>
+      <div id="d-preview" class="d-preview hidden">
+        <div class="d-preview-inner" id="d-preview-inner">
+          <img alt="Aperçu">
+          <div class="d-overlay" id="d-overlay"></div>
+        </div>
+      </div>
+      <div id="d-detect" class="d-detect hidden">
+        <label class="d-detect-row">
+          <input type="checkbox" id="d-ports-use">
+          <span id="d-detect-count">…</span>
+        </label>
+      </div>
       <div class="modal-actions">
         <button id="d-cancel" class="btn btn-ghost">Annuler</button>
         <button id="d-save" class="btn btn-primary">Créer le device</button>
@@ -233,6 +244,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

@@ -66,6 +66,13 @@ via localStorage, en secours).
    ou en **document PDF** (rendu haute définition des racks, devices et ports).
 6. **Créer un device** : cliquez sur **＋ Créer un device**, donnez-lui un nom,
    une taille (1U, 2U…) et importez la **photo 2D de la face avant**.
+   - **Détection automatique des ports** : dès l'import de la photo, l'application
+     analyse l'image et repère les connecteurs (RJ45, SFP…) — ports noirs sur
+     panneau clair, clairs sur panneau sombre, etc. Les ports trouvés sont
+     affichés en vert sur l'aperçu ; décochez la case si vous préférez les
+     placer à la main. Chaque exemplaire du device posé dans un rack arrive
+     avec ces ports déjà étiquetés (numérotés 1, 2, 3…), prêts à être renommés
+     en mode Étiquetage ou câblés en mode Câblage.
 7. **Placer un device** : glissez-le depuis la bibliothèque vers un rack : il se place
    automatiquement à l'étage (numéro d'U) où vous le déposez. La zone visée est surlignée
    en vert (libre) ou rouge (occupé). Vous pouvez aussi déplacer un device déjà placé,
