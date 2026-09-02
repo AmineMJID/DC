@@ -31,23 +31,49 @@ function escapeHtml(s) {
 }
 
 // ---------- État ----------
+// Structure :
+//   state.devices           -> bibliothèque PARTAGÉE entre workspaces
+//   state.workspaces[]      -> un board par workspace (racks, instances, ports, vue)
+//   state.activeWorkspaceId -> workspace courant
 let state = loadState();
 let labelingMode = false;
 let dragPayload = null;
 let popoverCtx = null;
 
-// Vue du board (décalage + échelle)
+// Vue du board (décalage + échelle) — mémorisée par workspace
 const view = { x: 80, y: 50, scale: 1 };
 
+function makeWorkspace(name, racks = []) {
+  return { id: uid(), name, racks, view: { x: 80, y: 50, scale: 1 } };
+}
+
 function loadState() {
+  let s = null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      if (s && Array.isArray(s.devices) && Array.isArray(s.racks)) return s;
-    }
-  } catch (e) { /* stockage corrompu -> état neuf */ }
-  return { devices: [], racks: [] };
+    if (raw) s = JSON.parse(raw);
+  } catch (e) { s = null; }
+
+  if (!s || !Array.isArray(s.devices)) {
+    return { devices: [], workspaces: [makeWorkspace('Workspace 1')], activeWorkspaceId: null };
+  }
+
+  // Migration d'une ancienne version (racks au niveau global)
+  if (!Array.isArray(s.workspaces)) {
+    const ws = makeWorkspace('Workspace 1', Array.isArray(s.racks) ? s.racks : []);
+    s.workspaces = [ws];
+    s.activeWorkspaceId = ws.id;
+  }
+  if (!s.workspaces.length) s.workspaces.push(makeWorkspace('Workspace 1'));
+  if (!s.workspaces.some(w => w.id === s.activeWorkspaceId)) {
+    s.activeWorkspaceId = s.workspaces[0].id;
+  }
+  return s;
+}
+
+// Workspace courant
+function active() {
+  return state.workspaces.find(w => w.id === state.activeWorkspaceId) || state.workspaces[0];
 }
 
 function saveState() {
@@ -56,6 +82,13 @@ function saveState() {
   } catch (e) {
     console.warn('Sauvegarde impossible (quota localStorage ?)', e);
   }
+}
+
+// Sauvegarde différée (pour la vue, sollicitée pendant le zoom/pan)
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveState, 400);
 }
 
 /* ============================================================
@@ -68,6 +101,10 @@ const board    = $('#board');
 function applyView() {
   board.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
   $('#z-pct').textContent = Math.round(view.scale * 100) + '%';
+  // Mémoriser la vue du workspace courant
+  const ws = active();
+  if (ws) { ws.view = { x: view.x, y: view.y, scale: view.scale }; }
+  scheduleSave();
 }
 
 // Coordonnées écran -> coordonnées board
@@ -208,7 +245,7 @@ viewport.addEventListener('drop', e => {
     y: Math.max(0, Math.min(p.y - 30,        BOARD_H - RACK_H)),
     instances: []
   };
-  state.racks.push(rack);
+  active().racks.push(rack);
   dragPayload = null;
   saveState();
   renderBoard();
@@ -216,8 +253,9 @@ viewport.addEventListener('drop', e => {
 
 function renderBoard() {
   board.innerHTML = '';
-  state.racks.forEach(rack => board.appendChild(renderRack(rack)));
-  $('#board-empty').classList.toggle('hidden', state.racks.length > 0);
+  const ws = active();
+  ws.racks.forEach(rack => board.appendChild(renderRack(rack)));
+  $('#board-empty').classList.toggle('hidden', ws.racks.length > 0);
 }
 
 /* ============================================================
@@ -265,7 +303,8 @@ function renderRack(rack) {
 
   header.querySelector('.mini-del').addEventListener('click', () => {
     if (confirm('Supprimer cette baie et tous les devices qu\'elle contient ?')) {
-      state.racks = state.racks.filter(r => r.id !== rack.id);
+      const ws = active();
+      ws.racks = ws.racks.filter(r => r.id !== rack.id);
       saveState();
       renderBoard();
     }
@@ -356,7 +395,11 @@ function renderRack(rack) {
       }
     } else {
       // déplacement d'un device déjà placé (vers un autre étage / une autre baie)
-      const oldRack = state.racks.find(r => r.instances.some(i => i.id === dragPayload.instId));
+      let oldRack = null;
+      for (const w of state.workspaces) {
+        oldRack = w.racks.find(r => r.instances.some(i => i.id === dragPayload.instId));
+        if (oldRack) break;
+      }
       if (oldRack) {
         const idx = oldRack.instances.findIndex(i => i.id === dragPayload.instId);
         const [inst] = oldRack.instances.splice(idx, 1);
@@ -586,7 +629,7 @@ board.addEventListener('mouseover', e => {
   if (!portEl) return;
   const rackEl = portEl.closest('.rack');
   const devEl  = portEl.closest('.device');
-  const rack = state.racks.find(r => r.id === rackEl.dataset.rackId);
+  const rack = active().racks.find(r => r.id === rackEl.dataset.rackId);
   const inst = rack?.instances.find(i => i.id === devEl.dataset.instanceId);
   const port = inst?.ports.find(p => p.id === portEl.dataset.portId);
   if (!port) return;
@@ -678,9 +721,10 @@ function readAndDownscale(file) {
    ============================================================ */
 
 $('#btn-clear').addEventListener('click', () => {
-  if (state.racks.length === 0) return;
-  if (confirm('Vider le board ? Toutes les baies (devices et ports compris) seront supprimées. La bibliothèque de devices est conservée.')) {
-    state.racks = [];
+  const ws = active();
+  if (ws.racks.length === 0) return;
+  if (confirm(`Vider le board du workspace « ${ws.name} » ? Toutes les baies (devices et ports compris) seront supprimées. La bibliothèque de devices et les autres workspaces sont conservés.`)) {
+    ws.racks = [];
     saveState();
     renderBoard();
   }
@@ -693,7 +737,102 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ============================================================
+   WORKSPACES
+   - Chaque workspace possède son board (baies + devices placés + ports)
+   - La bibliothèque de devices (state.devices) est partagée
+   - Rien n'est supprimé sans action explicite de l'utilisateur
+   ============================================================ */
+
+function renderWorkspaces() {
+  const sel = $('#ws-select');
+  sel.innerHTML = '';
+  state.workspaces.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w.id;
+    opt.textContent = w.name;
+    sel.appendChild(opt);
+  });
+  sel.value = state.activeWorkspaceId;
+}
+
+function switchWorkspace(id) {
+  if (id === state.activeWorkspaceId) return;
+  // Sauvegarder la vue du workspace qu'on quitte
+  saveState();
+
+  state.activeWorkspaceId = id;
+  const ws = active();
+
+  // Restaurer la vue mémorisée de ce workspace
+  view.x     = ws.view?.x     ?? 80;
+  view.y     = ws.view?.y     ?? 50;
+  view.scale = ws.view?.scale ?? 1;
+  applyView();
+
+  hidePortPopover();
+  saveState();
+  renderBoard();
+  renderWorkspaces();
+}
+
+$('#ws-select').addEventListener('change', e => switchWorkspace(e.target.value));
+
+$('#ws-new').addEventListener('click', () => {
+  const name = prompt('Nom du nouveau workspace :', 'Workspace ' + (state.workspaces.length + 1));
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const ws = makeWorkspace(trimmed);
+  state.workspaces.push(ws);
+  saveState();
+  switchWorkspace(ws.id);
+});
+
+$('#ws-rename').addEventListener('click', () => {
+  const ws = active();
+  const name = prompt('Renommer le workspace :', ws.name);
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  ws.name = trimmed;
+  saveState();
+  renderWorkspaces();
+});
+
+$('#ws-del').addEventListener('click', () => {
+  if (state.workspaces.length <= 1) {
+    alert('Impossible de supprimer le dernier workspace. Vous pouvez plutôt le vider avec le bouton « Vider ».');
+    return;
+  }
+  const ws = active();
+  const count = ws.racks.reduce((n, r) => n + r.instances.length, 0);
+  if (!confirm(
+    `Supprimer définitivement le workspace « ${ws.name} » ?\n\n` +
+    `Il contient ${ws.racks.length} baie(s) et ${count} device(s) placé(s).\n\n` +
+    `Cette action est irréversible. La bibliothèque de devices (partagée) est conservée.`)) return;
+
+  state.workspaces = state.workspaces.filter(w => w.id !== ws.id);
+  state.activeWorkspaceId = state.workspaces[0].id;
+  const next = active();
+  view.x = next.view?.x ?? 80;
+  view.y = next.view?.y ?? 50;
+  view.scale = next.view?.scale ?? 1;
+  saveState();
+  applyView();
+  hidePortPopover();
+  renderBoard();
+  renderWorkspaces();
+});
+
 // ---------- Initialisation ----------
+{
+  const ws = active();
+  view.x = ws.view?.x ?? 80;
+  view.y = ws.view?.y ?? 50;
+  view.scale = ws.view?.scale ?? 1;
+}
 applyView();
+renderWorkspaces();
 renderPalette();
 renderBoard();

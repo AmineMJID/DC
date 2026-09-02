@@ -63,6 +63,54 @@ body {
   font-size: 17px;
 }
 .brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.2px; }
+
+/* ---------- Sélecteur de workspace ---------- */
+.ws-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+.ws-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.ws-switcher select {
+  appearance: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  padding: 7px 30px 7px 12px;
+  cursor: pointer;
+  max-width: 220px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ws-switcher select:hover { border-color: var(--accent); }
+.ws-switcher select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.ws-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ws-btn:hover { background: #eef1f6; border-color: var(--accent); }
+.ws-btn-danger:hover { background: rgba(220,38,38,.08); border-color: var(--red); color: var(--red); }
+
 .topbar-hint {
   flex: 1;
   color: var(--muted);
