@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>DC Rack Planner — Plan de racks data center</title>
+  <link rel="stylesheet" href="styles.css?v=21">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">▤</span>
+      <span class="brand-name">DC&nbsp;Rack&nbsp;Planner</span>
+    </div>
+    <div class="ws-switcher">
+      <button id="btn-home" class="ws-btn" title="Retour à l'accueil (mes workspaces)">⌂</button>
+      <label for="ws-select" class="ws-label">Workspace</label>
+      <select id="ws-select" title="Changer de workspace"></select>
+      <button id="ws-new" class="ws-btn" title="Nouveau workspace">＋</button>
+      <button id="ws-rename" class="ws-btn" title="Renommer ce workspace">✎</button>
+      <button id="ws-del" class="ws-btn ws-btn-danger" title="Supprimer ce workspace">🗑</button>
+    </div>
+    <div class="topbar-hint" id="mode-hint">Glissez un rack sur le board, puis ajoutez vos devices.</div>
+
+    <div class="search-box">
+      <span class="search-ico">🔍</span>
+      <input id="global-search" type="text" placeholder="Rechercher un device, un port, une étiquette…" autocomplete="off">
+      <div id="search-results" class="search-results hidden"></div>
+    </div>
+
+    <div class="actions">
+      <label class="switch-wrap" title="Activer le mode câblage : reliez les ports entre eux">
+        <span class="switch-label">Câblage</span>
+        <span class="switch">
+          <input type="checkbox" id="cabling-toggle">
+          <span class="slider"></span>
+        </span>
+      </label>
+      <div class="port-mode-wrap">
+        <button id="btn-label" class="btn" title="Port et étiquetage : créer ou modifier des ports">
+          <span class="btn-ico">🔌</span> Port et étiquetage ▾
+        </button>
+        <div id="label-menu" class="export-menu hidden">
+          <button id="label-create">➕ <span>Créer des ports</span></button>
+          <button id="label-edit">✏️ <span>Modifier les ports</span></button>
+        </div>
+      </div>
+      <div class="export-wrap">
+        <button id="btn-export" class="btn" title="Exporter le plan du workspace">
+          <span class="btn-ico">⬇</span> Exporter ▾
+        </button>
+        <div id="export-menu" class="export-menu hidden">
+          <button id="export-png">🖼️ <span>Image PNG</span></button>
+          <button id="export-pdf">📄 <span>Document PDF</span></button>
+        </div>
+      </div>
+      <span id="save-status" class="save-status ss-cloud" title="Enregistré sur le serveur">☁️</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ============ PANNEAU LATERAL ============ -->
+    <aside class="sidebar">
+      <section>
+        <h2>Composants</h2>
+        <div class="palette">
+          <div class="pal-card rack-card" draggable="true" id="pal-rack" title="Glissez-moi sur le board">
+            <div class="pal-rack-ico">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="pal-meta">
+              <strong>Rack</strong>
+              <small>Rack data center — glisser sur le board</small>
+            </div>
+          </div>
+          <label class="rack-size-row">
+            Taille du rack à déposer
+            <select id="new-rack-size">
+              <option value="6">6U</option>
+              <option value="9">9U</option>
+              <option value="12" selected>12U</option>
+              <option value="15">15U</option>
+              <option value="18">18U</option>
+              <option value="22">22U</option>
+              <option value="27">27U</option>
+              <option value="32">32U</option>
+              <option value="42">42U</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Bibliothèque de devices</h2>
+        <button id="btn-new-device" class="btn btn-primary btn-block">
+          <span class="btn-ico">＋</span> Créer un device
+        </button>
+        <div id="device-list" class="device-list"></div>
+        <p class="hint">
+          Glissez un device dans un rack : il se verrouille automatiquement
+          à l'étage (U) où vous le déposez.
+        </p>
+      </section>
+    </aside>
+
+    <!-- ============ BOARD ============ -->
+    <main class="board-viewport" id="board-viewport">
+      <div class="board" id="board"></div>
+
+      <!-- Panneau des connexions (mode câblage) -->
+      <div id="cable-panel" class="cable-panel hidden">
+        <div class="cp-head">
+          <h3>🔌 Connexions <span id="cable-count" class="cp-count">0</span></h3>
+          <button id="cable-panel-clear" class="cp-clear" title="Supprimer tous les câbles du workspace">Tout retirer</button>
+        </div>
+        <p class="cp-hint">Cliquez un port, puis un autre port pour les relier.</p>
+        <div id="cable-list" class="cable-list"></div>
+      </div>
+
+      <div class="board-empty" id="board-empty">
+        <div class="empty-rack">
+          <div class="er-top"></div>
+          <div class="er-body"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <p>Glissez un <strong>rack</strong> depuis le panneau de gauche</p>
+        <small>Molette : zoomer &nbsp;·&nbsp; Glisser le fond : se déplacer &nbsp;·&nbsp; Ctrl+Z : annuler</small>
+      </div>
+
+      <!-- Contrôles de zoom -->
+      <div class="zoom-ctrl">
+        <button id="z-out" title="Dézoomer">−</button>
+        <span id="z-pct" title="Taux de zoom">100%</span>
+        <button id="z-in" title="Zoomer">+</button>
+        <button id="z-reset" title="Recentrer à 100%">⌂</button>
+      </div>
+
+      <!-- Infobulle des ports -->
+      <div id="tooltip" class="tooltip hidden"></div>
+
+      <!-- Popover de création / édition d'un câble -->
+      <div id="cable-popover" class="popover hidden">
+        <h4 id="cl-title">Nouveau câble</h4>
+        <label>Identifiant du câble
+          <input id="c-name" type="text" placeholder="Ex : CAB-001" maxlength="60">
+        </label>
+        <label>Couleur
+          <div id="c-colors" class="color-row"></div>
+        </label>
+        <div class="popover-actions">
+          <button id="c-delete" class="btn btn-danger hidden">Supprimer</button>
+          <button id="c-cancel" class="btn btn-ghost">Annuler</button>
+          <button id="c-save" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </div>
+
+      <!-- Popover de création / édition d'un port -->
+      <div id="port-popover" class="popover hidden">
+        <h4 id="pp-title">Nouveau port</h4>
+        <label>Nom du port
+          <input id="p-name" type="text" placeholder="Ex : Gi0/1, MGMT, P1…" maxlength="60">
+        </label>
+        <label>Étiquette
+          <input id="p-label" type="text" placeholder="Ex : CAB-SRV-01 / SW02-Gi0/24" maxlength="80">
+        </label>
+        <label>Taille du port
+          <div class="size-slider-row">
+            <input type="range" id="p-size" min="50" max="250" step="5" value="100">
+            <span id="p-size-val" class="size-val">100%</span>
+          </div>
+        </label>
+        <div class="popover-actions">
+          <button id="p-delete" class="btn btn-danger hidden">Supprimer</button>
+          <button id="p-cancel" class="btn btn-ghost">Annuler</button>
+          <button id="p-save" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ ECRAN D'ACCUEIL — LANCEUR DE WORKSPACES ============ -->
+  <div id="home-screen" class="home hidden">
+    <div class="home-inner">
+      <div class="home-head">
+        <div class="home-logo">▤</div>
+        <h1>DC Rack Planner</h1>
+        <p>Planification de racks data center — créez un workspace pour commencer</p>
+      </div>
+
+      <button id="home-new" class="home-create">
+        <span class="hc-plus">＋</span>
+        <span class="hc-text">
+          <strong>Créer un workspace</strong>
+          <small>Nouveau board avec racks et devices</small>
+        </span>
+      </button>
+
+      <div class="home-history">
+        <h2>Mes workspaces <span id="home-count" class="home-count"></span></h2>
+        <div id="home-list" class="home-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE CREATION DE DEVICE ============ -->
+  <div id="device-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Nouveau device</h3>
+      <label>Nom du device
+        <input id="d-name" type="text" placeholder="Ex : Switch Cisco 2960X" maxlength="60">
+      </label>
+      <label>Taille (hauteur dans le rack)
+        <select id="d-size">
+          <option value="1">1U</option>
+          <option value="2">2U</option>
+          <option value="3">3U</option>
+          <option value="4">4U</option>
+          <option value="5">5U</option>
+          <option value="6">6U</option>
+          <option value="8">8U</option>
+          <option value="10">10U</option>
+          <option value="12">12U</option>
+        </select>
+      </label>
+      <label>Photo de la face avant (2D)
+        <input id="d-photo" type="file" accept="image/*">
+      </label>
+      <div id="d-preview" class="d-preview hidden"><img alt="Aperçu"></div>
+      <div class="modal-actions">
+        <button id="d-cancel" class="btn btn-ghost">Annuler</button>
+        <button id="d-save" class="btn btn-primary">Créer le device</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=21"></script>
+</body>
+</html>

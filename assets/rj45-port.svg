@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6e9ee"/>
+      <stop offset=".45" stop-color="#c3c9d2"/>
+      <stop offset="1" stop-color="#9aa1ad"/>
+    </linearGradient>
+    <linearGradient id="metalDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b7bdc7"/>
+      <stop offset="1" stop-color="#878e9a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9a3"/>
+      <stop offset=".5" stop-color="#e8bd4b"/>
+      <stop offset="1" stop-color="#a87612"/>
+    </linearGradient>
+  </defs>
+  <!-- châssis métallique -->
+  <rect x="2" y="2" width="96" height="96" rx="9" fill="url(#metal)" stroke="#6f7681" stroke-width="1.5"/>
+  <!-- coins de vis -->
+  <circle cx="9" cy="9" r="2.4" fill="#7d848f"/>
+  <circle cx="91" cy="9" r="2.4" fill="#7d848f"/>
+  <circle cx="9" cy="91" r="2.4" fill="#7d848f"/>
+  <circle cx="91" cy="91" r="2.4" fill="#7d848f"/>
+  <!-- évidement : embout de la fiche (encoche haute) -->
+  <path d="M38 12 H62 V22 H80 Q86 22 86 28 V76 Q86 82 80 82 H20 Q14 82 14 76 V28 Q14 22 20 22 H38 Z"
+        fill="#23262c"/>
+  <!-- cavité noire -->
+  <path d="M24 30 H76 Q80 30 80 34 V72 Q80 76 76 76 H24 Q20 76 20 72 V34 Q20 30 24 30 Z"
+        fill="#0c0d10"/>
+  <!-- profondeur haute -->
+  <path d="M40 14 H60 V24 H40 Z" fill="#050608"/>
+  <rect x="24" y="30" width="52" height="8" fill="#1a1d22"/>
+  <!-- numéros 1-8 -->
+  <g fill="#8b909b" font-family="Arial, sans-serif" font-size="7.5" font-weight="700" text-anchor="middle">
+    <text x="26" y="47">1</text>
+    <text x="33.4" y="47">2</text>
+    <text x="40.8" y="47">3</text>
+    <text x="48.2" y="47">4</text>
+    <text x="55.6" y="47">5</text>
+    <text x="63" y="47">6</text>
+    <text x="70.4" y="47">7</text>
+    <text x="77.8" y="47">8</text>
+  </g>
+  <!-- 8 contacts dorés -->
+  <g fill="url(#gold)" stroke="#7c5a08" stroke-width="0.5">
+    <rect x="24.2" y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="31.6" y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="39"   y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="46.4" y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="53.8" y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="61.2" y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="68.6" y="52" width="3.6" height="20" rx="1.4"/>
+    <rect x="76"   y="52" width="3.6" height="20" rx="1.4"/>
+  </g>
+  <!-- reflet sur les contacts -->
+  <g fill="#fff4cf" opacity="0.8">
+    <rect x="25" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="32.4" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="39.8" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="47.2" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="54.6" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="62" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="69.4" y="53.5" width="1" height="7" rx="0.5"/>
+    <rect x="76.8" y="53.5" width="1" height="7" rx="0.5"/>
+  </g>
+</svg>

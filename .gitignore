@@ -1,0 +1,4 @@
+# Données de persistance serveur (workspaces des utilisateurs) — ne pas versionner
+data/
+__pycache__/
+*.pyc
