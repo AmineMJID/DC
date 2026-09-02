@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>DC Rack Planner — Plan de baies data center</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <header class="topbar">
@@ -14,6 +14,7 @@
       <span class="brand-name">DC&nbsp;Rack&nbsp;Planner</span>
     </div>
     <div class="ws-switcher">
+      <button id="btn-home" class="ws-btn" title="Retour à l'accueil (mes workspaces)">⌂</button>
       <label for="ws-select" class="ws-label">Workspace</label>
       <select id="ws-select" title="Changer de workspace"></select>
       <button id="ws-new" class="ws-btn" title="Nouveau workspace">＋</button>
@@ -104,6 +105,30 @@
     </main>
   </div>
 
+  <!-- ============ ECRAN D'ACCUEIL — LANCEUR DE WORKSPACES ============ -->
+  <div id="home-screen" class="home hidden">
+    <div class="home-inner">
+      <div class="home-head">
+        <div class="home-logo">▤</div>
+        <h1>DC Rack Planner</h1>
+        <p>Planification de baies data center — créez un workspace pour commencer</p>
+      </div>
+
+      <button id="home-new" class="home-create">
+        <span class="hc-plus">＋</span>
+        <span class="hc-text">
+          <strong>Créer un workspace</strong>
+          <small>Nouveau board avec baies et devices</small>
+        </span>
+      </button>
+
+      <div class="home-history">
+        <h2>Mes workspaces <span id="home-count" class="home-count"></span></h2>
+        <div id="home-list" class="home-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ MODALE CREATION DE DEVICE ============ -->
   <div id="device-modal" class="modal hidden">
     <div class="modal-box">
@@ -135,6 +160,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

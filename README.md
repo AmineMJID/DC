@@ -17,8 +17,11 @@ Puis ouvrir <http://localhost:8080>.
 
 ## Utilisation
 
-0. **Workspaces** : la barre du haut permet de gérer plusieurs workspaces
-   (menu déroulant + `＋` nouveau, `✎` renommer, `🗑` supprimer).
+0. **Écran d'accueil** : au lancement, une page d'accueil affiche un bouton
+   **« Créer un workspace »** et l'**historique de vos workspaces** (cartes triées
+   par date de modification, avec le nombre de baies / devices et la date).
+   Cliquez sur une carte pour ouvrir le workspace, ou sur 🗑 pour le supprimer.
+   Le bouton **⌂** dans la barre du haut permet de revenir à l'accueil à tout moment.
    - Chaque workspace possède **son propre board** : baies, devices placés et ports.
    - La **bibliothèque de devices est partagée** : un device créé dans un workspace
      est disponible dans tous les autres.
@@ -26,6 +29,8 @@ Puis ouvrir <http://localhost:8080>.
    - **Rien n'est jamais supprimé automatiquement** : la suppression d'un workspace,
      d'une baie ou d'un device se fait uniquement via les boutons prévus, avec
      confirmation.
+   - En cours de travail, la barre du haut permet aussi de gérer les workspaces
+     (menu déroulant + `＋` nouveau, `✎` renommer, `🗑` supprimer).
 1. **Navigation** : le board est une surface infinie — **molette** pour zoomer
    (centré sur le curseur), **glisser le fond** pour se déplacer. Les boutons
    en bas à droite (`−`, `+`, `⌂`) donnent aussi le zoom et le recentrage.

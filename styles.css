@@ -705,3 +705,157 @@ body.labeling .port {
   border: 1px solid var(--border);
 }
 .d-preview img { width: 100%; max-height: 120px; object-fit: contain; display: block; }
+
+/* ============================================================
+   ECRAN D'ACCUEIL — lanceur de workspaces
+   ============================================================ */
+.home {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  background:
+    radial-gradient(1100px 500px at 50% -10%, rgba(37,99,235,.12), transparent 60%),
+    linear-gradient(#e9ecf3, #dde1ea);
+}
+.home-inner {
+  width: 640px;
+  max-width: 94vw;
+  padding: 70px 20px 60px;
+}
+.home-head { text-align: center; margin-bottom: 34px; }
+.home-logo {
+  width: 64px; height: 64px;
+  margin: 0 auto 16px;
+  display: grid; place-items: center;
+  font-size: 32px;
+  color: #fff;
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(37,99,235,.35);
+}
+.home-head h1 { font-size: 28px; letter-spacing: -.5px; margin-bottom: 8px; }
+.home-head p { color: var(--muted); font-size: 14px; }
+
+/* Bouton créer */
+.home-create {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: var(--accent);
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  box-shadow: 0 10px 26px rgba(37,99,235,.3);
+  transition: transform .12s, box-shadow .12s, background .15s;
+}
+.home-create:hover {
+  background: var(--accent-2);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(37,99,235,.38);
+}
+.home-create:active { transform: translateY(0); }
+.hc-plus {
+  width: 42px; height: 42px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  font-size: 24px;
+  background: rgba(255,255,255,.18);
+  border-radius: 10px;
+}
+.hc-text { display: flex; flex-direction: column; gap: 3px; }
+.hc-text strong { font-size: 16px; }
+.hc-text small { font-size: 12px; opacity: .85; }
+
+/* Historique */
+.home-history { margin-top: 38px; }
+.home-history h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.home-count {
+  background: var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-size: 11px;
+}
+.home-list { display: flex; flex-direction: column; gap: 10px; }
+.home-empty {
+  padding: 26px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  background: rgba(255,255,255,.55);
+  border: 1px dashed var(--border-2);
+  border-radius: 12px;
+}
+
+.ws-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+}
+.ws-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 18px rgba(20,28,45,.1);
+  transform: translateY(-1px);
+}
+.wc-ico {
+  width: 42px; height: 42px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  font-size: 20px;
+  background: #eef2fb;
+  border-radius: 10px;
+}
+.wc-info { flex: 1; min-width: 0; }
+.wc-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-meta { font-size: 12px; color: var(--muted); }
+.wc-meta .wc-dot { margin: 0 7px; opacity: .5; }
+.wc-del {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  opacity: 0;
+  transition: opacity .15s, color .15s, background .15s;
+}
+.ws-card:hover .wc-del { opacity: 1; }
+.wc-del:hover { color: var(--red); background: rgba(220,38,38,.1); }
