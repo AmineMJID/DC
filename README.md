@@ -1,8 +1,15 @@
-# DC
-# DC Rack Planner
+<p align="center">
+  <img src="assets/logo.svg" alt="Logo DC Rack Planner" width="112" height="112">
+</p>
 
-Application web de planification de baies data center (type draw.io, spécialisée racks) :
-glisser-déposer un rack 12U, y placer des devices (avec photo de face avant), et étiqueter
+<h1 align="center">DC Rack Planner</h1>
+
+<p align="center">
+  Application web de planification de baies data center — type draw.io, spécialisée racks.
+</p>
+
+---
+Glissez-déposez un rack 12U, placez vos devices (avec photo de face avant) et étiquetez
 les ports.
 
 ## Lancer l'application
@@ -157,4 +164,7 @@ workspace entier se supprime via la barre du haut ou l'écran d'accueil.
 - `index.html` — structure de l'interface
 - `styles.css` — thème et mise en page
 - `app.js` — logique (drag & drop, racks, devices, ports, câbles, persistance)
+- `assets/logo.svg` — logo du projet (icône d'application, défini en vectoriel) ;
+  décliné en PNG (`logo-512.png`, `logo-192.png`), favicon (`favicon.ico` /
+  `favicon-*.png`) et `apple-touch-icon.png`
 - `data/state.json` — état sauvegardé (créé automatiquement, non versionné)
