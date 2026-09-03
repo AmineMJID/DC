@@ -48,6 +48,22 @@ body {
   background: var(--panel-2);
   border-bottom: 1px solid var(--border);
 }
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  position: relative;
+  z-index: 160;
+}
 .brand {
   display: flex;
   align-items: center;
@@ -140,7 +156,8 @@ body {
   box-shadow: 0 12px 32px rgba(20,28,45,.18);
   max-height: 360px;
   overflow-y: auto;
-  z-index: 150;
+  z-index: 200;
+  min-width: 300px;
 }
 .sr-item {
   width: 100%;
@@ -436,15 +453,6 @@ body.cabling .port.connectable {
   }
 }
 
-.topbar-hint {
-  flex: 1;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .actions { display: flex; gap: 8px; }
 
 /* ---------- Boutons ---------- */

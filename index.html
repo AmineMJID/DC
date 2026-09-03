@@ -21,53 +21,56 @@
     <div class="workspace-tools">
       <button id="ws-info" class="ws-btn" title="Informations du dossier LLD : client, auteur, versions, VLANs">📘</button>
     </div>
-    <div class="topbar-hint hidden" id="mode-hint"></div>
 
-    <div class="search-box">
-      <span class="search-ico">🔍</span>
-      <input id="global-search" type="text" placeholder="Rechercher un device, un port, une étiquette…" autocomplete="off">
-      <div id="search-results" class="search-results hidden"></div>
+    <div class="topbar-center">
+      <div class="view-switch" id="view-switch">
+        <button id="view-elev" class="vs-btn active" title="Vue élévations des racks">📐 Élévations</button>
+        <button id="view-topo" class="vs-btn" title="Vue topologie logique (diagramme réseau)">🕸️ Topologie</button>
+      </div>
     </div>
 
-    <div class="view-switch" id="view-switch">
-      <button id="view-elev" class="vs-btn active" title="Vue élévations des racks">📐 Élévations</button>
-      <button id="view-topo" class="vs-btn" title="Vue topologie logique (diagramme réseau)">🕸️ Topologie</button>
-    </div>
-
-    <label class="switch-wrap" title="Activer le mode câblage : reliez les ports entre eux">
-      <span class="switch-label">Câblage</span>
-      <span class="switch">
-        <input type="checkbox" id="cabling-toggle">
-        <span class="slider"></span>
-      </span>
-    </label>
-
-    <div class="actions">
-      <div class="port-mode-wrap">
-        <button id="btn-label" class="btn" title="Port et étiquetage : créer ou modifier des ports">
-          <span class="btn-ico">🔌</span> Port et étiquetage ▾
-        </button>
-        <div id="label-menu" class="export-menu hidden">
-          <button id="label-create">➕ <span>Créer des ports</span></button>
-          <button id="label-edit">✏️ <span>Modifier les ports</span></button>
-        </div>
+    <div class="topbar-right">
+      <div class="search-box">
+        <span class="search-ico">🔍</span>
+        <input id="global-search" type="text" placeholder="Rechercher un device, un port, une étiquette…" autocomplete="off">
+        <div id="search-results" class="search-results hidden"></div>
       </div>
-      <div class="export-wrap">
-        <button id="btn-export" class="btn" title="Exporter le plan du workspace">
-          <span class="btn-ico">⬇</span> Exporter ▾
-        </button>
-        <div id="export-menu" class="export-menu hidden">
-          <button id="export-png">🖼️ <span>Image PNG</span></button>
-          <button id="export-pdf">📄 <span>Plan PDF (1 page)</span></button>
-          <button id="export-lld">📕 <span>Document LLD (PDF)</span></button>
-          <div class="export-sep"></div>
-          <button id="export-xlsx">📗 <span>Classeur Excel (.xlsx)</span></button>
-          <button id="export-csv-inv">📊 <span>Inventaire (CSV)</span></button>
-          <button id="export-csv-cab">🔌 <span>Câblage (CSV)</span></button>
-          <button id="export-csv-ports">🗂️ <span>Ports &amp; étiquettes (CSV)</span></button>
+
+      <label class="switch-wrap" title="Activer le mode câblage : reliez les ports entre eux">
+        <span class="switch-label">Câblage</span>
+        <span class="switch">
+          <input type="checkbox" id="cabling-toggle">
+          <span class="slider"></span>
+        </span>
+      </label>
+
+      <div class="actions">
+        <div class="port-mode-wrap">
+          <button id="btn-label" class="btn" title="Port et étiquetage : créer ou modifier des ports">
+            <span class="btn-ico">🔌</span> Port et étiquetage ▾
+          </button>
+          <div id="label-menu" class="export-menu hidden">
+            <button id="label-create">➕ <span>Créer des ports</span></button>
+            <button id="label-edit">✏️ <span>Modifier les ports</span></button>
+          </div>
         </div>
+        <div class="export-wrap">
+          <button id="btn-export" class="btn" title="Exporter le plan du workspace">
+            <span class="btn-ico">⬇</span> Exporter ▾
+          </button>
+          <div id="export-menu" class="export-menu hidden">
+            <button id="export-png">🖼️ <span>Image PNG</span></button>
+            <button id="export-pdf">📄 <span>Plan PDF (1 page)</span></button>
+            <button id="export-lld">📕 <span>Document LLD (PDF)</span></button>
+            <div class="export-sep"></div>
+            <button id="export-xlsx">📗 <span>Classeur Excel (.xlsx)</span></button>
+            <button id="export-csv-inv">📊 <span>Inventaire (CSV)</span></button>
+            <button id="export-csv-cab">🔌 <span>Câblage (CSV)</span></button>
+            <button id="export-csv-ports">🗂️ <span>Ports &amp; étiquettes (CSV)</span></button>
+          </div>
+        </div>
+        <span id="save-status" class="save-status ss-cloud" title="Enregistré sur le serveur">☁️</span>
       </div>
-      <span id="save-status" class="save-status ss-cloud" title="Enregistré sur le serveur">☁️</span>
     </div>
   </header>
 
