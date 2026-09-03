@@ -29,6 +29,33 @@ via localStorage, en secours).
 > Une ancienne sauvegarde présente dans le navigateur est automatiquement
 > reprise et envoyée au serveur au premier démarrage avec `server.py`.
 
+## Hébergement en ligne (GitHub Pages)
+
+Le dépôt contient un workflow GitHub Actions
+(`.github/workflows/pages.yml`) qui publie automatiquement l'application
+sur **GitHub Pages** à chaque push sur `main` :
+<https://aminemjid.github.io/DC/>
+
+Activation (une seule fois, par le propriétaire du dépôt) :
+
+1. GitHub Pages n'est disponible sur un dépôt **privé** qu'avec un plan
+   payant : avec un compte gratuit, passez le dépôt en **public**
+   (*Settings → General → Danger Zone → Change visibility*).
+2. *Settings → Pages → Build and deployment → Source* : choisissez
+   **GitHub Actions**.
+3. Poussez sur `main` (ou lancez le workflow à la main depuis l'onglet
+   *Actions → Déployer sur GitHub Pages → Run workflow*). Le site est
+   en ligne après une à deux minutes.
+
+> **Limite importante :** GitHub Pages ne sert que des fichiers statiques,
+> `server.py` n'y tourne pas. La version en ligne fonctionne donc en mode
+> **💾 navigateur** : toutes les fonctions sont disponibles (racks, devices,
+> ports, câblage, topologie, exports PNG / PDF / LLD / Excel / CSV), mais les
+> workspaces sont enregistrés dans le **localStorage de chaque navigateur**
+> — pas de partage entre postes, et perte des données si l'on vide le cache.
+> Pour la sauvegarde serveur (☁️ `data/state.json`), déployez `server.py`
+> sur un hébergeur Python (VPS, Render, Railway, PythonAnywhere…).
+
 ## Utilisation
 
 0. **Écran d'accueil** : au lancement, une page d'accueil affiche un bouton
@@ -154,6 +181,7 @@ workspace entier se supprime via la barre du haut ou l'écran d'accueil.
 ## Fichiers
 
 - `server.py` — serveur HTTP + persistance JSON (`data/state.json`)
+- `.github/workflows/pages.yml` — déploiement automatique sur GitHub Pages
 - `index.html` — structure de l'interface
 - `styles.css` — thème et mise en page
 - `app.js` — logique (drag & drop, racks, devices, ports, câbles, persistance)
