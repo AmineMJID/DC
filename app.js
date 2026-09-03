@@ -3042,49 +3042,81 @@ function renderTopology(ws) {
 
   const drawLinks = () => {
     svg.innerHTML = '';
+    
+    // Grouper les liens par paire de noeuds pour les décaler
+    const linkGroups = new Map();
     for (const l of topo.links) {
       const na = nodeById(l.a), nb = nodeById(l.b);
       if (!na || !nb) continue;
-      const x1 = na.x + TOPO_NW / 2, y1 = na.y + TOPO_NH / 2;
-      const x2 = nb.x + TOPO_NW / 2, y2 = nb.y + TOPO_NH / 2;
-      const color = l.color || '#60a5fa';
+      // Clé triée pour identifier la paire (a-b = b-a)
+      const key = [l.a, l.b].sort().join('-');
+      if (!linkGroups.has(key)) linkGroups.set(key, []);
+      linkGroups.get(key).push(l);
+    }
+    
+    for (const [key, links] of linkGroups) {
+      const count = links.length;
+      links.forEach((l, index) => {
+        const na = nodeById(l.a), nb = nodeById(l.b);
+        if (!na || !nb) return;
+        
+        let x1 = na.x + TOPO_NW / 2, y1 = na.y + TOPO_NH / 2;
+        let x2 = nb.x + TOPO_NW / 2, y2 = nb.y + TOPO_NH / 2;
+        const color = l.color || '#60a5fa';
 
-      const line = document.createElementNS(svgNS, 'line');
-      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-      line.setAttribute('stroke', color);
-      line.setAttribute('stroke-width', '2.5');
-      if (l.style === 'dashed') line.setAttribute('stroke-dasharray', '7 5');
-      svg.appendChild(line);
+        // Décaler les liens multiples entre les mêmes noeuds
+        if (count > 1) {
+          const dx = x2 - x1, dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            // Vecteur perpendiculaire pour le décalage
+            const px = -dy / len, py = dx / len;
+            // Espacer les liens de 12px les uns des autres
+            const offset = (index - (count - 1) / 2) * 12;
+            x1 += px * offset;
+            y1 += py * offset;
+            x2 += px * offset;
+            y2 += py * offset;
+          }
+        }
 
-      const label = [l.label, l.speed, l.vlan && 'VLAN ' + l.vlan].filter(Boolean).join(' · ');
-      if (label) {
-        const t = document.createElementNS(svgNS, 'text');
-        t.setAttribute('x', (x1 + x2) / 2);
-        t.setAttribute('y', (y1 + y2) / 2 - 6);
-        t.setAttribute('fill', '#e6ecf5');
-        t.setAttribute('font-size', '11');
-        t.setAttribute('font-weight', '600');
-        t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('paint-order', 'stroke');
-        t.setAttribute('stroke', '#0b0d11');
-        t.setAttribute('stroke-width', '3.5');
-        t.textContent = label;
-        svg.appendChild(t);
-      }
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '2.5');
+        if (l.style === 'dashed') line.setAttribute('stroke-dasharray', '7 5');
+        svg.appendChild(line);
 
-      // Zone cliquable invisible (édition du lien)
-      const hit = document.createElementNS(svgNS, 'line');
-      hit.setAttribute('x1', x1); hit.setAttribute('y1', y1);
-      hit.setAttribute('x2', x2); hit.setAttribute('y2', y2);
-      hit.setAttribute('stroke', 'rgba(0,0,0,0)');
-      hit.setAttribute('stroke-width', '14');
-      hit.style.cursor = 'pointer';
-      hit.addEventListener('click', e => {
-        e.stopPropagation();
-        openLinkPopover(l, e.clientX, e.clientY, false);
+        const label = [l.label, l.speed, l.vlan && 'VLAN ' + l.vlan].filter(Boolean).join(' · ');
+        if (label) {
+          const t = document.createElementNS(svgNS, 'text');
+          t.setAttribute('x', (x1 + x2) / 2);
+          t.setAttribute('y', (y1 + y2) / 2 - 6);
+          t.setAttribute('fill', '#e6ecf5');
+          t.setAttribute('font-size', '11');
+          t.setAttribute('font-weight', '600');
+          t.setAttribute('text-anchor', 'middle');
+          t.setAttribute('paint-order', 'stroke');
+          t.setAttribute('stroke', '#0b0d11');
+          t.setAttribute('stroke-width', '3.5');
+          t.textContent = label;
+          svg.appendChild(t);
+        }
+
+        // Zone cliquable invisible (édition du lien)
+        const hit = document.createElementNS(svgNS, 'line');
+        hit.setAttribute('x1', x1); hit.setAttribute('y1', y1);
+        hit.setAttribute('x2', x2); hit.setAttribute('y2', y2);
+        hit.setAttribute('stroke', 'rgba(0,0,0,0)');
+        hit.setAttribute('stroke-width', '14');
+        hit.style.cursor = 'pointer';
+        hit.addEventListener('click', e => {
+          e.stopPropagation();
+          openLinkPopover(l, e.clientX, e.clientY, false);
+        });
+        svg.appendChild(hit);
       });
-      svg.appendChild(hit);
     }
   };
 
