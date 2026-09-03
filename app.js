@@ -3534,6 +3534,136 @@ async function renderPlanCanvas() {
   }
 }
 
+// Dessine la vue topologie sur un canvas et le renvoie
+function renderTopoCanvas() {
+  const ws = active();
+  if (!ws) return null;
+  const topo = ws.topology;
+  if (!topo || !topo.nodes.length) return null;
+
+  const PAD = 60;
+  const NW = 190, NH = 64;
+
+  // Zone englobante des noeuds
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  topo.nodes.forEach(n => {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + NW);
+    maxY = Math.max(maxY, n.y + NH);
+  });
+  minX -= PAD; minY -= PAD; maxX += PAD; maxY += PAD;
+  const W = Math.ceil(maxX - minX);
+  const H = Math.ceil(maxY - minY);
+
+  const SCALE = 2;
+  const c = document.createElement('canvas');
+  c.width = W * SCALE;
+  c.height = H * SCALE;
+  const ctx = c.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+
+  // Fond
+  ctx.fillStyle = '#1a2130';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grille de points
+  ctx.fillStyle = '#252d3d';
+  const gap = 24;
+  for (let gx = gap / 2; gx < W; gx += gap) {
+    for (let gy = gap / 2; gy < H; gy += gap) {
+      ctx.beginPath();
+      ctx.arc(gx, gy, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Liens
+  const nodeById = id => topo.nodes.find(n => n.id === id);
+  for (const l of topo.links) {
+    const na = nodeById(l.a), nb = nodeById(l.b);
+    if (!na || !nb) continue;
+    const x1 = na.x - minX + NW / 2, y1 = na.y - minY + NH / 2;
+    const x2 = nb.x - minX + NW / 2, y2 = nb.y - minY + NH / 2;
+    const color = l.color || '#60a5fa';
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    if (l.style === 'dashed') ctx.setLineDash([7, 5]);
+    else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const label = [l.label, l.speed, l.vlan && 'VLAN ' + l.vlan].filter(Boolean).join(' · ');
+    if (label) {
+      ctx.fillStyle = '#e6ecf5';
+      ctx.font = 'bold 11px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, (x1 + x2) / 2, (y1 + y2) / 2 - 6);
+    }
+  }
+
+  // Noeuds
+  for (const n of topo.nodes) {
+    const info = topoInstOf(ws, n);
+    const inst = info?.inst;
+    const x = n.x - minX, y = n.y - minY;
+
+    // Fond du noeud
+    ctx.fillStyle = '#232b3a';
+    ctx.strokeStyle = '#3b465a';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, x, y, NW, NH, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Bordure gauche colorée
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillRect(x, y + 10, 4, NH - 20);
+
+    // LED
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.arc(x + 14, y + 16, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nom
+    ctx.fillStyle = '#eef2f8';
+    ctx.font = 'bold 12.5px "Segoe UI", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(truncate(ctx, inst?.name || '?', NW - 30), x + 24, y + 16);
+
+    // Sous-titre
+    ctx.fillStyle = '#9fb0c8';
+    ctx.font = '10.5px "Segoe UI", sans-serif';
+    const sub = [inst?.brand, inst?.model].filter(Boolean).join(' ') || '—';
+    ctx.fillText(truncate(ctx, sub, NW - 20), x + 10, y + 34);
+
+    // Sous-titre 2
+    ctx.fillStyle = '#7488a3';
+    ctx.font = '10px "Segoe UI", sans-serif';
+    const sub2 = info ? `${info.rack.name} · U${inst.slot + 1}` : '';
+    ctx.fillText(truncate(ctx, sub2, NW - 20), x + 10, y + 48);
+  }
+
+  return c;
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+}
+
 // Trace un chemin Bézier SVG-like à partir de sa description "M..C.."
 function drawBezier(ctx, d) {
   const nums = d.match(/-?\d+(\.\d+)?/g).map(Number);
