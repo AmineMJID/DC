@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DC Rack Planner — serveur minimal avec persistance JSON.
+LLDraw — serveur minimal avec persistance JSON.
 
 Il fait deux choses :
   1. Sert les fichiers statiques (index.html, app.js, styles.css, assets/...).
@@ -136,7 +136,7 @@ def main():
         save_state({})
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
-    print(f"DC Rack Planner — serveur démarré sur http://localhost:{port}")
+    print(f"LLDraw — serveur démarré sur http://localhost:{port}")
     print(f"Sauvegarde des workspaces : {STATE_FILE}")
     try:
         server.serve_forever()

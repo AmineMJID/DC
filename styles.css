@@ -1,5 +1,5 @@
 /* ============================================================
-   DC Rack Planner — styles
+   LLDraw — styles
    ============================================================ */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -52,7 +52,21 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   white-space: nowrap;
+  cursor: pointer;
+}
+.brand:hover .brand-name { color: var(--accent); }
+.brand:focus-visible {
+  outline: 3px solid rgba(37,99,235,.28);
+  outline-offset: 4px;
+  border-radius: 8px;
 }
 .brand-mark {
   width: 30px; height: 30px;
@@ -70,38 +84,13 @@ body {
 }
 .brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.2px; }
 
-/* ---------- Sélecteur de workspace ---------- */
-.ws-switcher {
+/* ---------- Outils du workspace ---------- */
+.workspace-tools {
   display: flex;
   align-items: center;
-  gap: 6px;
   padding-left: 16px;
   border-left: 1px solid var(--border);
 }
-.ws-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .8px;
-  color: var(--muted);
-  margin-right: 2px;
-}
-.ws-switcher select {
-  appearance: none;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
-  border: 1px solid var(--border-2);
-  border-radius: 8px;
-  padding: 7px 30px 7px 12px;
-  cursor: pointer;
-  max-width: 220px;
-  transition: border-color .15s, box-shadow .15s;
-}
-.ws-switcher select:hover { border-color: var(--accent); }
-.ws-switcher select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 .ws-btn {
   width: 32px; height: 32px;
   display: grid; place-items: center;

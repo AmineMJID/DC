@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Logo DC Rack Planner" width="112" height="112">
+  <img src="assets/logo.svg" alt="Logo LLDraw" width="112" height="112">
 </p>
 
-<h1 align="center">DC Rack Planner</h1>
+<h1 align="center">LLDraw</h1>
 
 <p align="center">
   Application web de planification de baies data center — type draw.io, spécialisée racks.
@@ -42,7 +42,7 @@ via localStorage, en secours).
    **« Créer un workspace »** et l'**historique de vos workspaces** (cartes triées
    par date de modification, avec le nombre de baies / devices et la date).
    Cliquez sur une carte pour ouvrir le workspace, ou sur 🗑 pour le supprimer.
-   Le bouton **⌂** dans la barre du haut permet de revenir à l'accueil à tout moment.
+   Cliquez sur le **logo** ou le nom **LLDraw** dans la barre du haut pour revenir à l'accueil à tout moment.
    - Chaque workspace possède **son propre board** : baies, devices placés et ports.
    - La **bibliothèque de devices est partagée** : un device créé dans un workspace
      est disponible dans tous les autres.
@@ -50,8 +50,7 @@ via localStorage, en secours).
    - **Rien n'est jamais supprimé automatiquement** : la suppression d'un workspace,
      d'une baie ou d'un device se fait uniquement via les boutons prévus, avec
      confirmation.
-   - En cours de travail, la barre du haut permet aussi de gérer les workspaces
-     (menu déroulant + `＋` nouveau, `✎` renommer, `🗑` supprimer).
+   - La création et la suppression des workspaces se font depuis l'écran d'accueil.
 1. **Navigation** : le board est une surface infinie — **molette** pour zoomer
    (centré sur le curseur), **glisser le fond** pour se déplacer. Les boutons
    en bas à droite (`−`, `+`, `⌂`) donnent aussi le zoom et le recentrage.
@@ -156,7 +155,7 @@ quand l'application est lancée avec `server.py`, et sinon dans le navigateur
 (localStorage) comme solution de secours. Workspaces, boards, bibliothèque de
 devices et ports persistent donc entre les sessions — et même d'un navigateur à
 l'autre avec le serveur. Un rack se supprime individuellement via son ✕ ; un
-workspace entier se supprime via la barre du haut ou l'écran d'accueil.
+workspace entier se supprime depuis l'écran d'accueil.
 
 ## Fichiers
 
