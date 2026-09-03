@@ -21,10 +21,6 @@
     <div class="workspace-tools">
       <button id="ws-info" class="ws-btn" title="Informations du dossier LLD : client, auteur, versions, VLANs">📘</button>
     </div>
-    <div class="view-switch" id="view-switch">
-      <button id="view-elev" class="vs-btn active" title="Vue élévations des racks">📐 Élévations</button>
-      <button id="view-topo" class="vs-btn" title="Vue topologie logique (diagramme réseau)">🕸️ Topologie</button>
-    </div>
     <div class="topbar-hint" id="mode-hint">Glissez un rack sur le board, puis ajoutez vos devices.</div>
 
     <div class="search-box">
@@ -33,14 +29,20 @@
       <div id="search-results" class="search-results hidden"></div>
     </div>
 
+    <label class="switch-wrap" title="Activer le mode câblage : reliez les ports entre eux">
+      <span class="switch-label">Câblage</span>
+      <span class="switch">
+        <input type="checkbox" id="cabling-toggle">
+        <span class="slider"></span>
+      </span>
+    </label>
+
+    <div class="view-switch" id="view-switch">
+      <button id="view-elev" class="vs-btn active" title="Vue élévations des racks">📐 Élévations</button>
+      <button id="view-topo" class="vs-btn" title="Vue topologie logique (diagramme réseau)">🕸️ Topologie</button>
+    </div>
+
     <div class="actions">
-      <label class="switch-wrap" title="Activer le mode câblage : reliez les ports entre eux">
-        <span class="switch-label">Câblage</span>
-        <span class="switch">
-          <input type="checkbox" id="cabling-toggle">
-          <span class="slider"></span>
-        </span>
-      </label>
       <div class="port-mode-wrap">
         <button id="btn-label" class="btn" title="Port et étiquetage : créer ou modifier des ports">
           <span class="btn-ico">🔌</span> Port et étiquetage ▾
