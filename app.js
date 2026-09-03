@@ -12,6 +12,55 @@
    - Persistance dans localStorage
    ============================================================ */
 
+// Device permanent WatchGuard
+const WATCHGUARD_ID = 'watchguard-permanent';
+
+function ensureWatchGuard() {
+  const exists = state.devices.some(d => d.id === WATCHGUARD_ID);
+  if (!exists) {
+    state.devices.unshift({
+      id: WATCHGUARD_ID,
+      name: 'WatchGuard',
+      sizeU: 1,
+      photo: null,
+      permanent: true,
+      brand: 'WatchGuard',
+      model: 'Firebox',
+      partRef: '',
+      serial: '',
+      ipMgmt: '',
+      vlan: '',
+      watts: 25,
+      weightKg: 2.5,
+      ports: []
+    });
+    saveState();
+  }
+}
+
+// Charger l'image WatchGuard depuis le fichier
+async function loadWatchGuardPhoto() {
+  try {
+    const res = await fetch('assets/watchguard.jpg');
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const dataUrl = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+    const wg = state.devices.find(d => d.id === WATCHGUARD_ID);
+    if (wg) {
+      wg.photo = dataUrl;
+      saveState();
+      renderPalette();
+    }
+  } catch (e) { /* pas de photo watchguard disponible */ }
+}
+
+// Charger la photo au démarrage
+loadWatchGuardPhoto();
+
 // ---------- Constantes ----------
 const STORAGE_KEY = 'dc-rack-planner-v1';
 const DEFAULT_RACK_U = 12;    // taille par défaut d'un rack
@@ -577,6 +626,9 @@ function renderPalette() {
   const list = $('#device-list');
   list.innerHTML = '';
 
+  // S'assurer que le WatchGuard permanent existe toujours
+  ensureWatchGuard();
+
   state.devices.forEach(d => {
     const card = document.createElement('div');
     card.className = 'pal-card device-card';
@@ -592,7 +644,10 @@ function renderPalette() {
         <strong>${escapeHtml(d.name)}</strong>
         <small>${d.sizeU}U</small>
       </div>
-      <button class="mini-del" title="Supprimer ce modèle de device">✕</button>`;
+      <div class="pal-actions">
+        <button class="mini-edit" title="Modifier ce device">✏️</button>
+        ${d.permanent ? '' : '<button class="mini-del" title="Supprimer ce modèle de device">✕</button>'}
+      </div>`;
 
     card.addEventListener('dragstart', e => {
       dragPayload = { kind: 'device', deviceId: d.id, size: d.sizeU };
@@ -600,14 +655,23 @@ function renderPalette() {
       e.dataTransfer.effectAllowed = 'copy';
     });
 
-    card.querySelector('.mini-del').addEventListener('click', () => {
-      if (confirm(`Supprimer le modèle "${d.name}" de la bibliothèque ?\n(Les exemplaires déjà placés sont conservés.)`)) {
-        pushHistory();
-        state.devices = state.devices.filter(x => x.id !== d.id);
-        saveState();
-        renderPalette();
-      }
+    // Bouton modifier
+    card.querySelector('.mini-edit').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditDeviceModal(d);
     });
+
+    // Bouton supprimer (seulement pour les devices non-permanents)
+    if (!d.permanent) {
+      card.querySelector('.mini-del').addEventListener('click', () => {
+        if (confirm(`Supprimer le modèle "${d.name}" de la bibliothèque ?\n(Les exemplaires déjà placés sont conservés.)`)) {
+          pushHistory();
+          state.devices = state.devices.filter(x => x.id !== d.id);
+          saveState();
+          renderPalette();
+        }
+      });
+    }
 
     list.appendChild(card);
   });
@@ -1698,6 +1762,9 @@ let modalPorts = [];          // ports détectés sur la photo [{xPct,yPct,size}
 const D_INV_IDS = ['#d-brand', '#d-model', '#d-ref', '#d-serial', '#d-ip', '#d-vlan'];
 
 $('#btn-new-device').addEventListener('click', () => {
+  editingDeviceId = null;
+  $('#device-modal-title').textContent = 'Nouveau device';
+  $('#d-save').textContent = 'Créer le device';
   $('#d-name').value = '';
   $('#d-size').value = '1';
   D_INV_IDS.forEach(id => { $(id).value = ''; });
@@ -1711,6 +1778,95 @@ $('#btn-new-device').addEventListener('click', () => {
   $('#device-modal').classList.remove('hidden');
   $('#d-name').focus();
 });
+
+// Fonction pour ouvrir la modale en mode édition
+let editingDeviceId = null;
+
+function openEditDeviceModal(device) {
+  editingDeviceId = device.id;
+  $('#device-modal-title').textContent = 'Modifier le device';
+  $('#d-save').textContent = 'Enregistrer les modifications';
+  $('#d-name').value = device.name;
+  $('#d-size').value = String(device.sizeU);
+  $('#d-brand').value = device.brand || '';
+  $('#d-model').value = device.model || '';
+  $('#d-ref').value = device.partRef || '';
+  $('#d-serial').value = device.serial || '';
+  $('#d-ip').value = device.ipMgmt || '';
+  $('#d-vlan').value = device.vlan || '';
+  $('#d-watts').value = device.watts || '';
+  $('#d-kg').value = device.weightKg || '';
+  $('#d-photo').value = '';
+  modalPhoto = device.photo || null;
+  modalPorts = [];
+
+  // Afficher l'aperçu de la photo existante et lancer la détection
+  if (modalPhoto) {
+    showPhotoPreviewAndDetect(modalPhoto, device.id);
+  } else if (device.id === WATCHGUARD_ID) {
+    // Pour le WatchGuard, essayer de charger la photo si elle n'est pas encore en mémoire
+    loadWatchGuardPhoto().then(() => {
+      const wg = state.devices.find(d => d.id === WATCHGUARD_ID);
+      if (wg?.photo) {
+        modalPhoto = wg.photo;
+        showPhotoPreviewAndDetect(modalPhoto, device.id);
+      }
+    });
+  } else {
+    $('#d-preview').classList.add('hidden');
+    $('#d-detect').classList.add('hidden');
+  }
+
+  $('#device-modal').classList.remove('hidden');
+  $('#d-name').focus();
+}
+
+// Afficher l'aperçu de la photo et lancer la détection de ports
+function showPhotoPreviewAndDetect(photoDataUrl, deviceId = null) {
+  const prev = $('#d-preview');
+  const img = prev.querySelector('img');
+  img.src = photoDataUrl;
+  prev.classList.remove('hidden');
+  // Lancer la détection automatique des ports
+  detectPortsFromPhoto(photoDataUrl, deviceId);
+}
+
+// Fonction pour détecter les ports depuis une photo (réutilisable)
+async function detectPortsFromPhoto(photoDataUrl, deviceId = null) {
+  modalPorts = [];
+  const detectBox = $('#d-detect');
+  detectBox.classList.add('hidden');
+  const overlay = $('#d-overlay');
+  overlay.innerHTML = '';
+
+  if (!photoDataUrl) return;
+
+  const id = await imageDataFromUrl(photoDataUrl);
+  let ports = [];
+  try { ports = PortDetect.portsFromImageData(id); } catch (err) { console.warn('Détection de ports échouée', err); }
+  
+  // Pour le WatchGuard, forcer la taille des ports à 40%
+  if (deviceId === WATCHGUARD_ID) {
+    ports = ports.map(p => ({ ...p, size: 0.4 }));
+  }
+  
+  modalPorts = ports;
+
+  // Carrés d'aperçu positionnés en % sur la photo
+  for (const p of ports) {
+    const sq = document.createElement('div');
+    sq.className = 'd-dq';
+    sq.style.left = p.xPct + '%';
+    sq.style.top  = p.yPct + '%';
+    overlay.appendChild(sq);
+  }
+  $('#d-detect-count').textContent = ports.length
+    ? `${ports.length} port${ports.length > 1 ? 's' : ''} détecté${ports.length > 1 ? 's' : ''} sur la photo`
+    : 'Aucun port détecté — vous pourrez en placer manuellement (mode Étiquetage)';
+  $('#d-ports-use').checked = ports.length > 0;
+  $('#d-ports-use').disabled = ports.length === 0;
+  detectBox.classList.remove('hidden');
+}
 
 $('#d-cancel').addEventListener('click', () => $('#device-modal').classList.add('hidden'));
 $('#device-modal').addEventListener('click', e => {
@@ -1741,32 +1897,7 @@ $('#d-photo').addEventListener('change', async e => {
   prev.classList.remove('hidden');
 
   // --- Détection automatique des ports sur la photo ---
-  modalPorts = [];
-  const detectBox = $('#d-detect');
-  detectBox.classList.add('hidden');
-  const overlay = $('#d-overlay');
-  overlay.innerHTML = '';
-  if (modalPhoto) {
-    const id = await imageDataFromUrl(modalPhoto);
-    let ports = [];
-    try { ports = PortDetect.portsFromImageData(id); } catch (err) { console.warn('Détection de ports échouée', err); }
-    modalPorts = ports;
-
-    // carrés d'aperçu positionnés en % sur la photo
-    for (const p of ports) {
-      const sq = document.createElement('div');
-      sq.className = 'd-dq';
-      sq.style.left = p.xPct + '%';
-      sq.style.top  = p.yPct + '%';
-      overlay.appendChild(sq);
-    }
-    $('#d-detect-count').textContent = ports.length
-      ? `${ports.length} port${ports.length > 1 ? 's' : ''} détecté${ports.length > 1 ? 's' : ''} sur la photo`
-      : 'Aucun port détecté — vous pourrez en placer manuellement (mode Étiquetage)';
-    $('#d-ports-use').checked = ports.length > 0;
-    $('#d-ports-use').disabled = ports.length === 0;
-    detectBox.classList.remove('hidden');
-  }
+  await detectPortsFromPhoto(modalPhoto, editingDeviceId);
 });
 
 $('#d-save').addEventListener('click', () => {
@@ -1784,16 +1915,39 @@ $('#d-save').addEventListener('click', () => {
     watts: Math.max(0, parseFloat(String($('#d-watts').value).replace(',', '.')) || 0),
     weightKg: Math.max(0, parseFloat(String($('#d-kg').value).replace(',', '.')) || 0)
   };
+
   pushHistory();
-  state.devices.push({
-    id: uid(), name, sizeU, photo: modalPhoto, ...inv,
-    ports: usePorts ? modalPorts.map((p, i) => ({
-      id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
-    })) : []
-  });
+
+  if (editingDeviceId) {
+    // Mode édition : mettre à jour le device existant
+    const device = state.devices.find(d => d.id === editingDeviceId);
+    if (device) {
+      device.name = name;
+      device.sizeU = sizeU;
+      Object.assign(device, inv);
+      if (modalPhoto !== null) {
+        device.photo = modalPhoto;
+      }
+      if (usePorts) {
+        device.ports = modalPorts.map((p, i) => ({
+          id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
+        }));
+      }
+    }
+  } else {
+    // Mode création : ajouter un nouveau device
+    state.devices.push({
+      id: uid(), name, sizeU, photo: modalPhoto, ...inv,
+      ports: usePorts ? modalPorts.map((p, i) => ({
+        id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
+      })) : []
+    });
+  }
+
   saveState();
   renderPalette();
   $('#device-modal').classList.add('hidden');
+  editingDeviceId = null;
 });
 
 // Lecture + redimensionnement de l'image (pour tenir en localStorage)
@@ -2888,49 +3042,81 @@ function renderTopology(ws) {
 
   const drawLinks = () => {
     svg.innerHTML = '';
+    
+    // Grouper les liens par paire de noeuds pour les décaler
+    const linkGroups = new Map();
     for (const l of topo.links) {
       const na = nodeById(l.a), nb = nodeById(l.b);
       if (!na || !nb) continue;
-      const x1 = na.x + TOPO_NW / 2, y1 = na.y + TOPO_NH / 2;
-      const x2 = nb.x + TOPO_NW / 2, y2 = nb.y + TOPO_NH / 2;
-      const color = l.color || '#60a5fa';
+      // Clé triée pour identifier la paire (a-b = b-a)
+      const key = [l.a, l.b].sort().join('-');
+      if (!linkGroups.has(key)) linkGroups.set(key, []);
+      linkGroups.get(key).push(l);
+    }
+    
+    for (const [key, links] of linkGroups) {
+      const count = links.length;
+      links.forEach((l, index) => {
+        const na = nodeById(l.a), nb = nodeById(l.b);
+        if (!na || !nb) return;
+        
+        let x1 = na.x + TOPO_NW / 2, y1 = na.y + TOPO_NH / 2;
+        let x2 = nb.x + TOPO_NW / 2, y2 = nb.y + TOPO_NH / 2;
+        const color = l.color || '#60a5fa';
 
-      const line = document.createElementNS(svgNS, 'line');
-      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-      line.setAttribute('stroke', color);
-      line.setAttribute('stroke-width', '2.5');
-      if (l.style === 'dashed') line.setAttribute('stroke-dasharray', '7 5');
-      svg.appendChild(line);
+        // Décaler les liens multiples entre les mêmes noeuds
+        if (count > 1) {
+          const dx = x2 - x1, dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            // Vecteur perpendiculaire pour le décalage
+            const px = -dy / len, py = dx / len;
+            // Espacer les liens de 12px les uns des autres
+            const offset = (index - (count - 1) / 2) * 12;
+            x1 += px * offset;
+            y1 += py * offset;
+            x2 += px * offset;
+            y2 += py * offset;
+          }
+        }
 
-      const label = [l.label, l.speed, l.vlan && 'VLAN ' + l.vlan].filter(Boolean).join(' · ');
-      if (label) {
-        const t = document.createElementNS(svgNS, 'text');
-        t.setAttribute('x', (x1 + x2) / 2);
-        t.setAttribute('y', (y1 + y2) / 2 - 6);
-        t.setAttribute('fill', '#e6ecf5');
-        t.setAttribute('font-size', '11');
-        t.setAttribute('font-weight', '600');
-        t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('paint-order', 'stroke');
-        t.setAttribute('stroke', '#0b0d11');
-        t.setAttribute('stroke-width', '3.5');
-        t.textContent = label;
-        svg.appendChild(t);
-      }
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '2.5');
+        if (l.style === 'dashed') line.setAttribute('stroke-dasharray', '7 5');
+        svg.appendChild(line);
 
-      // Zone cliquable invisible (édition du lien)
-      const hit = document.createElementNS(svgNS, 'line');
-      hit.setAttribute('x1', x1); hit.setAttribute('y1', y1);
-      hit.setAttribute('x2', x2); hit.setAttribute('y2', y2);
-      hit.setAttribute('stroke', 'rgba(0,0,0,0)');
-      hit.setAttribute('stroke-width', '14');
-      hit.style.cursor = 'pointer';
-      hit.addEventListener('click', e => {
-        e.stopPropagation();
-        openLinkPopover(l, e.clientX, e.clientY, false);
+        const label = [l.label, l.speed, l.vlan && 'VLAN ' + l.vlan].filter(Boolean).join(' · ');
+        if (label) {
+          const t = document.createElementNS(svgNS, 'text');
+          t.setAttribute('x', (x1 + x2) / 2);
+          t.setAttribute('y', (y1 + y2) / 2 - 6);
+          t.setAttribute('fill', '#e6ecf5');
+          t.setAttribute('font-size', '11');
+          t.setAttribute('font-weight', '600');
+          t.setAttribute('text-anchor', 'middle');
+          t.setAttribute('paint-order', 'stroke');
+          t.setAttribute('stroke', '#0b0d11');
+          t.setAttribute('stroke-width', '3.5');
+          t.textContent = label;
+          svg.appendChild(t);
+        }
+
+        // Zone cliquable invisible (édition du lien)
+        const hit = document.createElementNS(svgNS, 'line');
+        hit.setAttribute('x1', x1); hit.setAttribute('y1', y1);
+        hit.setAttribute('x2', x2); hit.setAttribute('y2', y2);
+        hit.setAttribute('stroke', 'rgba(0,0,0,0)');
+        hit.setAttribute('stroke-width', '14');
+        hit.style.cursor = 'pointer';
+        hit.addEventListener('click', e => {
+          e.stopPropagation();
+          openLinkPopover(l, e.clientX, e.clientY, false);
+        });
+        svg.appendChild(hit);
       });
-      svg.appendChild(hit);
     }
   };
 
@@ -3377,6 +3563,136 @@ async function renderPlanCanvas() {
       x: inX + (port.xPct / 100) * innerW,
       y: top + (port.yPct / 100) * (inst.sizeU * U_H)
     };
+  }
+}
+
+// Dessine la vue topologie sur un canvas et le renvoie
+function renderTopoCanvas() {
+  const ws = active();
+  if (!ws) return null;
+  const topo = ws.topology;
+  if (!topo || !topo.nodes.length) return null;
+
+  const PAD = 60;
+  const NW = 190, NH = 64;
+
+  // Zone englobante des noeuds
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  topo.nodes.forEach(n => {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + NW);
+    maxY = Math.max(maxY, n.y + NH);
+  });
+  minX -= PAD; minY -= PAD; maxX += PAD; maxY += PAD;
+  const W = Math.ceil(maxX - minX);
+  const H = Math.ceil(maxY - minY);
+
+  const SCALE = 2;
+  const c = document.createElement('canvas');
+  c.width = W * SCALE;
+  c.height = H * SCALE;
+  const ctx = c.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+
+  // Fond
+  ctx.fillStyle = '#1a2130';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grille de points
+  ctx.fillStyle = '#252d3d';
+  const gap = 24;
+  for (let gx = gap / 2; gx < W; gx += gap) {
+    for (let gy = gap / 2; gy < H; gy += gap) {
+      ctx.beginPath();
+      ctx.arc(gx, gy, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Liens
+  const nodeById = id => topo.nodes.find(n => n.id === id);
+  for (const l of topo.links) {
+    const na = nodeById(l.a), nb = nodeById(l.b);
+    if (!na || !nb) continue;
+    const x1 = na.x - minX + NW / 2, y1 = na.y - minY + NH / 2;
+    const x2 = nb.x - minX + NW / 2, y2 = nb.y - minY + NH / 2;
+    const color = l.color || '#60a5fa';
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    if (l.style === 'dashed') ctx.setLineDash([7, 5]);
+    else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const label = [l.label, l.speed, l.vlan && 'VLAN ' + l.vlan].filter(Boolean).join(' · ');
+    if (label) {
+      ctx.fillStyle = '#e6ecf5';
+      ctx.font = 'bold 11px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, (x1 + x2) / 2, (y1 + y2) / 2 - 6);
+    }
+  }
+
+  // Noeuds
+  for (const n of topo.nodes) {
+    const info = topoInstOf(ws, n);
+    const inst = info?.inst;
+    const x = n.x - minX, y = n.y - minY;
+
+    // Fond du noeud
+    ctx.fillStyle = '#232b3a';
+    ctx.strokeStyle = '#3b465a';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, x, y, NW, NH, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Bordure gauche colorée
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillRect(x, y + 10, 4, NH - 20);
+
+    // LED
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.arc(x + 14, y + 16, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nom
+    ctx.fillStyle = '#eef2f8';
+    ctx.font = 'bold 12.5px "Segoe UI", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(truncate(ctx, inst?.name || '?', NW - 30), x + 24, y + 16);
+
+    // Sous-titre
+    ctx.fillStyle = '#9fb0c8';
+    ctx.font = '10.5px "Segoe UI", sans-serif';
+    const sub = [inst?.brand, inst?.model].filter(Boolean).join(' ') || '—';
+    ctx.fillText(truncate(ctx, sub, NW - 20), x + 10, y + 34);
+
+    // Sous-titre 2
+    ctx.fillStyle = '#7488a3';
+    ctx.font = '10px "Segoe UI", sans-serif';
+    const sub2 = info ? `${info.rack.name} · U${inst.slot + 1}` : '';
+    ctx.fillText(truncate(ctx, sub2, NW - 20), x + 10, y + 48);
+  }
+
+  return c;
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   }
 }
 
