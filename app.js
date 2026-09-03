@@ -1797,19 +1797,52 @@ function openEditDeviceModal(device) {
   modalPhoto = device.photo || null;
   modalPorts = [];
 
-  // Afficher l'aperçu de la photo existante
+  // Afficher l'aperçu de la photo existante et lancer la détection
   if (modalPhoto) {
     const prev = $('#d-preview');
     const img = prev.querySelector('img');
     img.src = modalPhoto;
     prev.classList.remove('hidden');
+    // Lancer la détection automatique des ports sur la photo existante
+    detectPortsFromPhoto(modalPhoto);
   } else {
     $('#d-preview').classList.add('hidden');
+    $('#d-detect').classList.add('hidden');
   }
 
-  $('#d-detect').classList.add('hidden');
   $('#device-modal').classList.remove('hidden');
   $('#d-name').focus();
+}
+
+// Fonction pour détecter les ports depuis une photo (réutilisable)
+async function detectPortsFromPhoto(photoDataUrl) {
+  modalPorts = [];
+  const detectBox = $('#d-detect');
+  detectBox.classList.add('hidden');
+  const overlay = $('#d-overlay');
+  overlay.innerHTML = '';
+
+  if (!photoDataUrl) return;
+
+  const id = await imageDataFromUrl(photoDataUrl);
+  let ports = [];
+  try { ports = PortDetect.portsFromImageData(id); } catch (err) { console.warn('Détection de ports échouée', err); }
+  modalPorts = ports;
+
+  // Carrés d'aperçu positionnés en % sur la photo
+  for (const p of ports) {
+    const sq = document.createElement('div');
+    sq.className = 'd-dq';
+    sq.style.left = p.xPct + '%';
+    sq.style.top  = p.yPct + '%';
+    overlay.appendChild(sq);
+  }
+  $('#d-detect-count').textContent = ports.length
+    ? `${ports.length} port${ports.length > 1 ? 's' : ''} détecté${ports.length > 1 ? 's' : ''} sur la photo`
+    : 'Aucun port détecté — vous pourrez en placer manuellement (mode Étiquetage)';
+  $('#d-ports-use').checked = ports.length > 0;
+  $('#d-ports-use').disabled = ports.length === 0;
+  detectBox.classList.remove('hidden');
 }
 
 $('#d-cancel').addEventListener('click', () => $('#device-modal').classList.add('hidden'));
@@ -1841,32 +1874,7 @@ $('#d-photo').addEventListener('change', async e => {
   prev.classList.remove('hidden');
 
   // --- Détection automatique des ports sur la photo ---
-  modalPorts = [];
-  const detectBox = $('#d-detect');
-  detectBox.classList.add('hidden');
-  const overlay = $('#d-overlay');
-  overlay.innerHTML = '';
-  if (modalPhoto) {
-    const id = await imageDataFromUrl(modalPhoto);
-    let ports = [];
-    try { ports = PortDetect.portsFromImageData(id); } catch (err) { console.warn('Détection de ports échouée', err); }
-    modalPorts = ports;
-
-    // carrés d'aperçu positionnés en % sur la photo
-    for (const p of ports) {
-      const sq = document.createElement('div');
-      sq.className = 'd-dq';
-      sq.style.left = p.xPct + '%';
-      sq.style.top  = p.yPct + '%';
-      overlay.appendChild(sq);
-    }
-    $('#d-detect-count').textContent = ports.length
-      ? `${ports.length} port${ports.length > 1 ? 's' : ''} détecté${ports.length > 1 ? 's' : ''} sur la photo`
-      : 'Aucun port détecté — vous pourrez en placer manuellement (mode Étiquetage)';
-    $('#d-ports-use').checked = ports.length > 0;
-    $('#d-ports-use').disabled = ports.length === 0;
-    detectBox.classList.remove('hidden');
-  }
+  await detectPortsFromPhoto(modalPhoto);
 });
 
 $('#d-save').addEventListener('click', () => {
