@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="dcBg" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="#5b95ff"/>
+      <stop offset="0.55" stop-color="#3f7bf0"/>
+      <stop offset="1" stop-color="#2865e0"/>
+    </linearGradient>
+    <radialGradient id="dcSheen" cx="0.5" cy="0.08" r="0.8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="dcSheet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef2f9"/>
+    </linearGradient>
+    <linearGradient id="dcBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6ebf6"/>
+      <stop offset="1" stop-color="#cbd5ea"/>
+    </linearGradient>
+    <linearGradient id="dcFront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafd"/>
+      <stop offset="1" stop-color="#e7ecf5"/>
+    </linearGradient>
+    <linearGradient id="dcHandle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b95ff"/>
+      <stop offset="1" stop-color="#316fe8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond : carre arrondi bleu (app icon) -->
+  <rect x="20" y="20" width="472" height="472" rx="112" fill="url(#dcBg)"/>
+  <rect x="20" y="20" width="472" height="472" rx="112" fill="url(#dcSheen)"/>
+
+  <!-- Feuille / classeur arriere -->
+  <g>
+    <rect x="168" y="118" width="178" height="168" rx="18" fill="url(#dcBack)"/>
+    <rect x="150" y="132" width="86" height="42" rx="13" fill="url(#dcBack)"/>
+  </g>
+
+  <!-- Document / classeur avant -->
+  <g>
+    <rect x="138" y="150" width="238" height="198" rx="22" fill="url(#dcSheet)"/>
+    <rect x="140" y="138" width="92" height="44" rx="13" fill="url(#dcSheet)"/>
+    <!-- lignes de texte bleues -->
+    <rect x="176" y="182" width="162" height="16" rx="8" fill="#2c6ef2"/>
+    <rect x="176" y="214" width="162" height="16" rx="8" fill="#2c6ef2"/>
+    <rect x="176" y="246" width="118" height="16" rx="8" fill="#2c6ef2"/>
+  </g>
+
+  <!-- Tiroir de rangement -->
+  <g>
+    <!-- rebord / profondeur du tiroir -->
+    <rect x="124" y="300" width="264" height="156" rx="28" fill="#e2e8f4"/>
+    <!-- face avant -->
+    <rect x="128" y="312" width="256" height="138" rx="22" fill="url(#dcFront)"/>
+    <!-- ouverture (ombre haute) -->
+    <rect x="140" y="304" width="232" height="16" rx="8" fill="#cfd8ea"/>
+    <!-- poignee -->
+    <rect x="212" y="344" width="88" height="30" rx="15" fill="url(#dcHandle)"/>
+    <rect x="226" y="354" width="60" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+  </g>
+
+  <!-- Ombre portee basse -->
+  <ellipse cx="256" cy="462" rx="150" ry="14" fill="#000000" opacity="0.14"/>
+</svg>
