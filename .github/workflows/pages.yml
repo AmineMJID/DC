@@ -1,0 +1,67 @@
+# Déploiement automatique de DC Rack Planner sur GitHub Pages.
+#
+# À chaque push sur `main`, les fichiers statiques de l'application
+# (index.html, app.js, styles.css, assets/) sont publiés sur
+# https://<utilisateur>.github.io/DC/
+#
+# GitHub Pages ne peut pas exécuter server.py : la version en ligne
+# fonctionne donc en mode « 💾 navigateur » (localStorage), sans la
+# sauvegarde serveur data/state.json. Voir README.md → « Hébergement ».
+#
+# Pré-requis (une seule fois) : Settings → Pages → Source : « GitHub Actions ».
+
+name: Déployer sur GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissions minimales requises par le déploiement Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois ; on laisse finir celui en cours
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Préparer le site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Copier les fichiers statiques
+        # On ne publie que ce dont le navigateur a besoin
+        # (ni server.py, ni README, ni fichiers de configuration).
+        run: |
+          mkdir -p _site/assets
+          cp index.html app.js styles.css _site/
+          cp -r assets/. _site/assets/
+          echo "Contenu publié :"
+          find _site -type f | sort
+
+      - name: Téléverser l'artefact Pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    name: Publier
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
