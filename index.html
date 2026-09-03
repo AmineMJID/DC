@@ -21,12 +21,17 @@
     <div class="workspace-tools">
       <button id="ws-info" class="ws-btn" title="Informations du dossier LLD : client, auteur, versions, VLANs">📘</button>
     </div>
-    <div class="topbar-hint" id="mode-hint">Glissez un rack sur le board, puis ajoutez vos devices.</div>
+    <div class="topbar-hint hidden" id="mode-hint"></div>
 
     <div class="search-box">
       <span class="search-ico">🔍</span>
       <input id="global-search" type="text" placeholder="Rechercher un device, un port, une étiquette…" autocomplete="off">
       <div id="search-results" class="search-results hidden"></div>
+    </div>
+
+    <div class="view-switch" id="view-switch">
+      <button id="view-elev" class="vs-btn active" title="Vue élévations des racks">📐 Élévations</button>
+      <button id="view-topo" class="vs-btn" title="Vue topologie logique (diagramme réseau)">🕸️ Topologie</button>
     </div>
 
     <label class="switch-wrap" title="Activer le mode câblage : reliez les ports entre eux">
@@ -36,11 +41,6 @@
         <span class="slider"></span>
       </span>
     </label>
-
-    <div class="view-switch" id="view-switch">
-      <button id="view-elev" class="vs-btn active" title="Vue élévations des racks">📐 Élévations</button>
-      <button id="view-topo" class="vs-btn" title="Vue topologie logique (diagramme réseau)">🕸️ Topologie</button>
-    </div>
 
     <div class="actions">
       <div class="port-mode-wrap">
@@ -341,10 +341,10 @@
     </div>
   </div>
 
-  <!-- ============ MODALE CREATION DE DEVICE ============ -->
+  <!-- ============ MODALE CREATION / EDITION DE DEVICE ============ -->
   <div id="device-modal" class="modal hidden">
     <div class="modal-box">
-      <h3>Nouveau device</h3>
+      <h3 id="device-modal-title">Nouveau device</h3>
       <label>Nom du device
         <input id="d-name" type="text" placeholder="Ex : Switch Cisco 2960X" maxlength="60">
       </label>

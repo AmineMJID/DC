@@ -12,6 +12,52 @@
    - Persistance dans localStorage
    ============================================================ */
 
+// Device permanent WatchGuard
+const WATCHGUARD_ID = 'watchguard-permanent';
+
+function ensureWatchGuard() {
+  const exists = state.devices.some(d => d.id === WATCHGUARD_ID);
+  if (!exists) {
+    state.devices.unshift({
+      id: WATCHGUARD_ID,
+      name: 'WatchGuard',
+      sizeU: 1,
+      photo: null,
+      permanent: true,
+      brand: 'WatchGuard',
+      model: 'Firebox',
+      partRef: '',
+      serial: '',
+      ipMgmt: '',
+      vlan: '',
+      watts: 25,
+      weightKg: 2.5,
+      ports: []
+    });
+    saveState();
+  }
+}
+
+// Charger l'image WatchGuard depuis le fichier
+fetch('assets/watchguard.jpg')
+  .then(r => r.ok ? r.blob() : Promise.reject())
+  .then(blob => {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  })
+  .then(dataUrl => {
+    const wg = state.devices.find(d => d.id === WATCHGUARD_ID);
+    if (wg && !wg.photo) {
+      wg.photo = dataUrl;
+      saveState();
+      renderPalette();
+    }
+  })
+  .catch(() => { /* pas de photo watchguard disponible */ });
+
 // ---------- Constantes ----------
 const STORAGE_KEY = 'dc-rack-planner-v1';
 const DEFAULT_RACK_U = 12;    // taille par défaut d'un rack
@@ -577,6 +623,9 @@ function renderPalette() {
   const list = $('#device-list');
   list.innerHTML = '';
 
+  // S'assurer que le WatchGuard permanent existe toujours
+  ensureWatchGuard();
+
   state.devices.forEach(d => {
     const card = document.createElement('div');
     card.className = 'pal-card device-card';
@@ -592,7 +641,10 @@ function renderPalette() {
         <strong>${escapeHtml(d.name)}</strong>
         <small>${d.sizeU}U</small>
       </div>
-      <button class="mini-del" title="Supprimer ce modèle de device">✕</button>`;
+      <div class="pal-actions">
+        <button class="mini-edit" title="Modifier ce device">✏️</button>
+        ${d.permanent ? '' : '<button class="mini-del" title="Supprimer ce modèle de device">✕</button>'}
+      </div>`;
 
     card.addEventListener('dragstart', e => {
       dragPayload = { kind: 'device', deviceId: d.id, size: d.sizeU };
@@ -600,14 +652,23 @@ function renderPalette() {
       e.dataTransfer.effectAllowed = 'copy';
     });
 
-    card.querySelector('.mini-del').addEventListener('click', () => {
-      if (confirm(`Supprimer le modèle "${d.name}" de la bibliothèque ?\n(Les exemplaires déjà placés sont conservés.)`)) {
-        pushHistory();
-        state.devices = state.devices.filter(x => x.id !== d.id);
-        saveState();
-        renderPalette();
-      }
+    // Bouton modifier
+    card.querySelector('.mini-edit').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditDeviceModal(d);
     });
+
+    // Bouton supprimer (seulement pour les devices non-permanents)
+    if (!d.permanent) {
+      card.querySelector('.mini-del').addEventListener('click', () => {
+        if (confirm(`Supprimer le modèle "${d.name}" de la bibliothèque ?\n(Les exemplaires déjà placés sont conservés.)`)) {
+          pushHistory();
+          state.devices = state.devices.filter(x => x.id !== d.id);
+          saveState();
+          renderPalette();
+        }
+      });
+    }
 
     list.appendChild(card);
   });
@@ -1698,6 +1759,9 @@ let modalPorts = [];          // ports détectés sur la photo [{xPct,yPct,size}
 const D_INV_IDS = ['#d-brand', '#d-model', '#d-ref', '#d-serial', '#d-ip', '#d-vlan'];
 
 $('#btn-new-device').addEventListener('click', () => {
+  editingDeviceId = null;
+  $('#device-modal-title').textContent = 'Nouveau device';
+  $('#d-save').textContent = 'Créer le device';
   $('#d-name').value = '';
   $('#d-size').value = '1';
   D_INV_IDS.forEach(id => { $(id).value = ''; });
@@ -1711,6 +1775,42 @@ $('#btn-new-device').addEventListener('click', () => {
   $('#device-modal').classList.remove('hidden');
   $('#d-name').focus();
 });
+
+// Fonction pour ouvrir la modale en mode édition
+let editingDeviceId = null;
+
+function openEditDeviceModal(device) {
+  editingDeviceId = device.id;
+  $('#device-modal-title').textContent = 'Modifier le device';
+  $('#d-save').textContent = 'Enregistrer les modifications';
+  $('#d-name').value = device.name;
+  $('#d-size').value = String(device.sizeU);
+  $('#d-brand').value = device.brand || '';
+  $('#d-model').value = device.model || '';
+  $('#d-ref').value = device.partRef || '';
+  $('#d-serial').value = device.serial || '';
+  $('#d-ip').value = device.ipMgmt || '';
+  $('#d-vlan').value = device.vlan || '';
+  $('#d-watts').value = device.watts || '';
+  $('#d-kg').value = device.weightKg || '';
+  $('#d-photo').value = '';
+  modalPhoto = device.photo || null;
+  modalPorts = [];
+
+  // Afficher l'aperçu de la photo existante
+  if (modalPhoto) {
+    const prev = $('#d-preview');
+    const img = prev.querySelector('img');
+    img.src = modalPhoto;
+    prev.classList.remove('hidden');
+  } else {
+    $('#d-preview').classList.add('hidden');
+  }
+
+  $('#d-detect').classList.add('hidden');
+  $('#device-modal').classList.remove('hidden');
+  $('#d-name').focus();
+}
 
 $('#d-cancel').addEventListener('click', () => $('#device-modal').classList.add('hidden'));
 $('#device-modal').addEventListener('click', e => {
@@ -1784,16 +1884,39 @@ $('#d-save').addEventListener('click', () => {
     watts: Math.max(0, parseFloat(String($('#d-watts').value).replace(',', '.')) || 0),
     weightKg: Math.max(0, parseFloat(String($('#d-kg').value).replace(',', '.')) || 0)
   };
+
   pushHistory();
-  state.devices.push({
-    id: uid(), name, sizeU, photo: modalPhoto, ...inv,
-    ports: usePorts ? modalPorts.map((p, i) => ({
-      id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
-    })) : []
-  });
+
+  if (editingDeviceId) {
+    // Mode édition : mettre à jour le device existant
+    const device = state.devices.find(d => d.id === editingDeviceId);
+    if (device) {
+      device.name = name;
+      device.sizeU = sizeU;
+      Object.assign(device, inv);
+      if (modalPhoto !== null) {
+        device.photo = modalPhoto;
+      }
+      if (usePorts) {
+        device.ports = modalPorts.map((p, i) => ({
+          id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
+        }));
+      }
+    }
+  } else {
+    // Mode création : ajouter un nouveau device
+    state.devices.push({
+      id: uid(), name, sizeU, photo: modalPhoto, ...inv,
+      ports: usePorts ? modalPorts.map((p, i) => ({
+        id: uid(), xPct: p.xPct, yPct: p.yPct, name: String(i + 1), label: '', size: p.size || 1
+      })) : []
+    });
+  }
+
   saveState();
   renderPalette();
   $('#device-modal').classList.add('hidden');
+  editingDeviceId = null;
 });
 
 // Lecture + redimensionnement de l'image (pour tenir en localStorage)
