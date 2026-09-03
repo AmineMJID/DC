@@ -1,7 +1,7 @@
 'use strict';
 
 /* ============================================================
-   DC Rack Planner
+   LLDraw
    - Board navigable : zoom (molette / boutons) et pan (glisser le fond)
    - Glisser-déposer de racks de tailles variables sur le board
    - Création de devices (nom, taille en U, photo de face avant)
@@ -334,7 +334,6 @@ function refreshAll() {
     }
   }
   renderPalette();
-  renderWorkspaces();
   renderHomeListSafe();
   const stillExists = ws && state.workspaces.some(w => w.id === ws.id);
   if (stillExists) {
@@ -419,8 +418,8 @@ function markViewTouched() {
   scheduleSave();
 }
 
-// Recentre/zoome la vue sur l'ensemble des racks du workspace (ou s'apprête à
-// recevoir un rack au centre si le board est vide). forceScale = 1 pour le ⌂.
+// Recentre/zoome la vue sur l'ensemble des racks du workspace. Quand le board
+// est vide, le centre du plan virtuel reste au milieu du viewport. forceScale = 1 pour le ⌂.
 function fitViewToContent(forceScale = null) {
   const ws = active();
   const rect = viewport.getBoundingClientRect();
@@ -430,9 +429,12 @@ function fitViewToContent(forceScale = null) {
   if (boardMode === 'topo') {
     const nodes = ws?.topology?.nodes || [];
     if (!nodes.length) {
-      view.scale = forceScale ?? 1;
-      view.x = rect.width / 2 - 300;
-      view.y = rect.height / 2 - 200;
+      // Même comportement que la vue élévations : un workspace vide démarre
+      // au milieu du plan, et non sur son origine en haut à gauche.
+      const scale = forceScale ?? 1;
+      view.scale = scale;
+      view.x = rect.width / 2 - (BOARD_W / 2) * scale;
+      view.y = rect.height / 2 - (BOARD_H / 2) * scale;
       applyView();
       return;
     }
@@ -454,9 +456,13 @@ function fitViewToContent(forceScale = null) {
   }
 
   if (!ws || !ws.racks.length) {
-    view.scale = forceScale ?? 1;
-    view.x = rect.width  / 2 - RACK_W / 2;
-    view.y = rect.height / 2 - 200;
+    // Ne pas afficher l'origine (0, 0) du plan : sur un board vide, cela
+    // donnait l'impression d'être bloqué dans son coin haut-gauche.
+    // Le premier rack déposé au centre apparaîtra donc naturellement centré.
+    const scale = forceScale ?? 1;
+    view.scale = scale;
+    view.x = rect.width / 2 - (BOARD_W / 2) * scale;
+    view.y = rect.height / 2 - (BOARD_H / 2) * scale;
     applyView();
     return;
   }
@@ -2198,20 +2204,29 @@ function renderHomeList() {
 function openWorkspace(id) {
   const ws = state.workspaces.find(w => w.id === id);
   if (!ws) return;
-  saveState();
   state.activeWorkspaceId = ws.id;
+  saveState();
   pendingPort = null;
   hideCablePopoverSafe();
-
-  applyWorkspaceView();
 
   hidePortPopover();
   // Désactive les modes Créer/Modifier en changeant de workspace
   if (labelMode) setLabelMode(null);
 
   hideHome();
-  renderWorkspaces();
   renderBoard();
+  applyWorkspaceView();
+
+  // Le viewport peut finir son recalcul de taille après la fermeture de
+  // l'accueil. Un second cadrage garantit que les nouveaux boards vides
+  // démarrent bien au centre, quelle que soit la taille de la fenêtre.
+  const openedWorkspaceId = ws.id;
+  requestAnimationFrame(() => {
+    const current = active();
+    if (current?.id === openedWorkspaceId && !current.viewTouched) {
+      fitViewToContent();
+    }
+  });
 }
 
 function createWorkspace() {
@@ -2241,7 +2256,6 @@ function deleteWorkspace(id) {
     state.activeWorkspaceId = state.workspaces[0]?.id ?? null;
   }
   saveState();
-  renderWorkspaces();
 
   if (homeScreen.classList.contains('hidden')) {
     // On était dans ce workspace : retour à l'accueil
@@ -2251,59 +2265,10 @@ function deleteWorkspace(id) {
   }
 }
 
-// Bouton "Créer un workspace" de l'accueil
+// Créer et gérer les workspaces se fait depuis l'écran d'accueil.
 $('#home-new').addEventListener('click', createWorkspace);
-// Bouton "accueil" de la barre du haut
-$('#btn-home').addEventListener('click', showHome);
-
-/* ============================================================
-   WORKSPACES (sélecteur dans la barre du haut)
-   ============================================================ */
-
-function renderWorkspaces() {
-  const sel = $('#ws-select');
-  sel.innerHTML = '';
-  state.workspaces.forEach(w => {
-    const opt = document.createElement('option');
-    opt.value = w.id;
-    opt.textContent = w.name;
-    sel.appendChild(opt);
-  });
-  sel.value = state.activeWorkspaceId || '';
-}
-
-$('#ws-select').addEventListener('change', e => {
-  if (e.target.value) openWorkspace(e.target.value);
-});
-
-$('#ws-new').addEventListener('click', createWorkspace);
-
-$('#ws-rename').addEventListener('click', () => {
-  const ws = active();
-  if (!ws) return;
-  const name = prompt('Renommer le workspace :', ws.name);
-  if (name === null) return;
-  const trimmed = name.trim();
-  if (!trimmed || trimmed === ws.name) return;
-  pushHistory();
-  ws.name = trimmed;
-  ws.updatedAt = Date.now();
-  saveState();
-  renderWorkspaces();
-  renderHomeListSafe();
-});
-
-$('#ws-del').addEventListener('click', () => {
-  const ws = active();
-  if (!ws) return;
-  deleteWorkspace(ws.id);
-  // S'il reste des workspaces, basculer sur le premier ; sinon accueil
-  if (state.workspaces.length) {
-    openWorkspace(state.workspaces[0].id);
-  } else {
-    showHome();
-  }
-});
+// Le logo et le nom de l'application servent de retour vers les workspaces.
+$('#btn-workspaces').addEventListener('click', showHome);
 
 /* ============================================================
    MODE CÂBLAGE — relier des ports entre eux par des cordons
@@ -3896,7 +3861,7 @@ function buildLldPdf(ws, planJpeg, planW, planH, topoJpeg, topoW, topoH) {
     drawTable(revRows, [0.8, 1.6, 2.4, 5.2], 8);
   }
   y = Math.min(y, M + 24);
-  txt(M, y, 'G\u00e9n\u00e9r\u00e9 par DC Rack Planner', 9, false, [0.6, 0.65, 0.72]);
+  txt(M, y, 'G\u00e9n\u00e9r\u00e9 par LLDraw', 9, false, [0.6, 0.65, 0.72]);
 
   // ---- 1. Synthèse des racks ----
   newPage();
@@ -4218,7 +4183,6 @@ async function boot() {
   // Récupère l'état depuis le serveur (JSON) ou, à défaut, le navigateur
   await bootState();
   renderPalette();
-  renderWorkspaces();
   renderBoard();
   // Recadrage automatique sur le contenu du workspace courant (ou vue par défaut)
   applyWorkspaceView();
