@@ -1802,14 +1802,14 @@ function openEditDeviceModal(device) {
 
   // Afficher l'aperçu de la photo existante et lancer la détection
   if (modalPhoto) {
-    showPhotoPreviewAndDetect(modalPhoto);
+    showPhotoPreviewAndDetect(modalPhoto, device.id);
   } else if (device.id === WATCHGUARD_ID) {
     // Pour le WatchGuard, essayer de charger la photo si elle n'est pas encore en mémoire
     loadWatchGuardPhoto().then(() => {
       const wg = state.devices.find(d => d.id === WATCHGUARD_ID);
       if (wg?.photo) {
         modalPhoto = wg.photo;
-        showPhotoPreviewAndDetect(modalPhoto);
+        showPhotoPreviewAndDetect(modalPhoto, device.id);
       }
     });
   } else {
@@ -1822,17 +1822,17 @@ function openEditDeviceModal(device) {
 }
 
 // Afficher l'aperçu de la photo et lancer la détection de ports
-function showPhotoPreviewAndDetect(photoDataUrl) {
+function showPhotoPreviewAndDetect(photoDataUrl, deviceId = null) {
   const prev = $('#d-preview');
   const img = prev.querySelector('img');
   img.src = photoDataUrl;
   prev.classList.remove('hidden');
   // Lancer la détection automatique des ports
-  detectPortsFromPhoto(photoDataUrl);
+  detectPortsFromPhoto(photoDataUrl, deviceId);
 }
 
 // Fonction pour détecter les ports depuis une photo (réutilisable)
-async function detectPortsFromPhoto(photoDataUrl) {
+async function detectPortsFromPhoto(photoDataUrl, deviceId = null) {
   modalPorts = [];
   const detectBox = $('#d-detect');
   detectBox.classList.add('hidden');
@@ -1844,6 +1844,12 @@ async function detectPortsFromPhoto(photoDataUrl) {
   const id = await imageDataFromUrl(photoDataUrl);
   let ports = [];
   try { ports = PortDetect.portsFromImageData(id); } catch (err) { console.warn('Détection de ports échouée', err); }
+  
+  // Pour le WatchGuard, forcer la taille des ports à 40%
+  if (deviceId === WATCHGUARD_ID) {
+    ports = ports.map(p => ({ ...p, size: 0.4 }));
+  }
+  
   modalPorts = ports;
 
   // Carrés d'aperçu positionnés en % sur la photo
@@ -1891,7 +1897,7 @@ $('#d-photo').addEventListener('change', async e => {
   prev.classList.remove('hidden');
 
   // --- Détection automatique des ports sur la photo ---
-  await detectPortsFromPhoto(modalPhoto);
+  await detectPortsFromPhoto(modalPhoto, editingDeviceId);
 });
 
 $('#d-save').addEventListener('click', () => {
