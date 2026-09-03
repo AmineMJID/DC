@@ -39,24 +39,27 @@ function ensureWatchGuard() {
 }
 
 // Charger l'image WatchGuard depuis le fichier
-fetch('assets/watchguard.jpg')
-  .then(r => r.ok ? r.blob() : Promise.reject())
-  .then(blob => {
-    return new Promise(resolve => {
+async function loadWatchGuardPhoto() {
+  try {
+    const res = await fetch('assets/watchguard.jpg');
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const dataUrl = await new Promise(resolve => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
       reader.readAsDataURL(blob);
     });
-  })
-  .then(dataUrl => {
     const wg = state.devices.find(d => d.id === WATCHGUARD_ID);
-    if (wg && !wg.photo) {
+    if (wg) {
       wg.photo = dataUrl;
       saveState();
       renderPalette();
     }
-  })
-  .catch(() => { /* pas de photo watchguard disponible */ });
+  } catch (e) { /* pas de photo watchguard disponible */ }
+}
+
+// Charger la photo au démarrage
+loadWatchGuardPhoto();
 
 // ---------- Constantes ----------
 const STORAGE_KEY = 'dc-rack-planner-v1';
@@ -1799,12 +1802,16 @@ function openEditDeviceModal(device) {
 
   // Afficher l'aperçu de la photo existante et lancer la détection
   if (modalPhoto) {
-    const prev = $('#d-preview');
-    const img = prev.querySelector('img');
-    img.src = modalPhoto;
-    prev.classList.remove('hidden');
-    // Lancer la détection automatique des ports sur la photo existante
-    detectPortsFromPhoto(modalPhoto);
+    showPhotoPreviewAndDetect(modalPhoto);
+  } else if (device.id === WATCHGUARD_ID) {
+    // Pour le WatchGuard, essayer de charger la photo si elle n'est pas encore en mémoire
+    loadWatchGuardPhoto().then(() => {
+      const wg = state.devices.find(d => d.id === WATCHGUARD_ID);
+      if (wg?.photo) {
+        modalPhoto = wg.photo;
+        showPhotoPreviewAndDetect(modalPhoto);
+      }
+    });
   } else {
     $('#d-preview').classList.add('hidden');
     $('#d-detect').classList.add('hidden');
@@ -1812,6 +1819,16 @@ function openEditDeviceModal(device) {
 
   $('#device-modal').classList.remove('hidden');
   $('#d-name').focus();
+}
+
+// Afficher l'aperçu de la photo et lancer la détection de ports
+function showPhotoPreviewAndDetect(photoDataUrl) {
+  const prev = $('#d-preview');
+  const img = prev.querySelector('img');
+  img.src = photoDataUrl;
+  prev.classList.remove('hidden');
+  // Lancer la détection automatique des ports
+  detectPortsFromPhoto(photoDataUrl);
 }
 
 // Fonction pour détecter les ports depuis une photo (réutilisable)
